@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.AgreeStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -27,9 +28,14 @@ public class ArgumentInitial {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "type", nullable = false, length = 50)
-    private String type; // 찬성/반대
+    @Enumerated(EnumType.STRING)
+    @Column(name = "agree_status", nullable = false)
+    private AgreeStatus agreeStatus; // 찬성/반대
 
+    @Column(name = "title", nullable = false)
+    private String title;
+
+    @Lob
     @Column(name = "content", nullable = false, columnDefinition = "TEXT") // TEXT 타입 명시
     private String content;
 
@@ -37,10 +43,11 @@ public class ArgumentInitial {
     private LocalDateTime createdAt;
 
     @Builder
-    public ArgumentInitial(Case aCase, User user, String type, String content) {
+    public ArgumentInitial(Case aCase, User user, AgreeStatus agreeStatus, String title, String content) {
         this.aCase = aCase;
         this.user = user;
-        this.type = type;
+        this.agreeStatus = agreeStatus;
+        this.title = title;
         this.content = content;
         this.createdAt = LocalDateTime.now();
     }
