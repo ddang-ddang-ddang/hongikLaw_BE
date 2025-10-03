@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.AgreeStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -27,9 +28,14 @@ public class Defense {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "type", nullable = false, length = 50)
-    private String type; // 찬성/반대 (변론의 입장)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "agree_type", nullable = false)
+    private AgreeStatus agreeStatus;// 찬성/반대 (변론의 입장)
 
+    @Column(name = "title", nullable = false)
+    private String title;
+
+    @Lob
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
@@ -43,10 +49,11 @@ public class Defense {
     private LocalDateTime createdAt;
 
     @Builder
-    public Defense(Case aCase, User user, String type, String content) {
+    public Defense(Case aCase, User user, AgreeStatus agreeStatus, String title, String content) {
         this.aCase = aCase;
         this.user = user;
-        this.type = type;
+        this.agreeStatus = agreeStatus;
+        this.title = title;
         this.content = content;
         this.likesCount = 0;
         this.isAdopted = false;
