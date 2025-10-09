@@ -10,7 +10,7 @@ description = '땅땅땅 데모데이 프로젝트'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(17)
 	}
 }
 
