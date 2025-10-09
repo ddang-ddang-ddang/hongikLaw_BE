@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.AgreeStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -28,16 +29,16 @@ public class Vote {
     private User user;
 
     @Column(name = "choice", nullable = false, length = 50)
-    private String choice; // 찬성/반대
+    private AgreeStatus agreeStatus; // 찬성/반대
 
     @Column(name = "voted_at", nullable = false, updatable = false)
     private LocalDateTime votedAt;
 
     @Builder
-    public Vote(Case aCase, User user, String choice) {
+    public Vote(Case aCase, User user, AgreeStatus agreeStatus) {
         this.aCase = aCase;
         this.user = user;
-        this.choice = choice;
+        this.agreeStatus = agreeStatus;
         this.votedAt = LocalDateTime.now();
     }
 }
