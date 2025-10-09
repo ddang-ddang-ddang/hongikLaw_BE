@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.Rank;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -19,8 +20,6 @@ public class User {
     @Column(name = "user_id", nullable = false)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "rank_id", nullable = false)
     private Rank rank;
 
     @Column(name = "nickname", nullable = false, unique = true, length = 255)
