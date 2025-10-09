@@ -41,8 +41,14 @@ public class User {
     @Column(name = "total_points", nullable = false)
     private Integer totalPoints;
 
+    @Column(name = "win_cnt")
+    private Integer winCnt = 0;
+
+    @Column(name = "lose_cnt")
+    private Integer loseCnt = 0;
+
     @Builder
-    public User(Rank rank, String nickname, String email, String password, Long exp, Integer totalPoints) {
+    public User(Rank rank, String nickname, String email, String password, Long exp, Integer totalPoints, Integer winCnt, Integer loseCnt) {
         this.rank = rank;
         this.nickname = nickname;
         this.email = email;
@@ -50,6 +56,8 @@ public class User {
         this.createdAt = LocalDateTime.now();
         this.exp = exp;
         this.totalPoints = totalPoints;
+        this.winCnt = winCnt;
+        this.loseCnt = loseCnt;
     }
 
     // --- 비즈니스 로직 편의를 위한 메서드들 ---
