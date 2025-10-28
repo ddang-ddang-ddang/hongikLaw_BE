@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -31,6 +32,10 @@ public class Defense {
     @Column(name = "type", nullable = false, length = 50)
     private DebateSide type; // 'A' 또는 'B'
 
+    @Column(name = "title", nullable = false)
+    private String title;
+
+    @Lob
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
@@ -44,10 +49,11 @@ public class Defense {
     private LocalDateTime createdAt;
 
     @Builder
-    public Defense(Case aCase, User user, DebateSide type, String content) {
+    public Defense(Case aCase, User user, DebateSide type, String title, String content) {
         this.aCase = aCase;
         this.user = user;
         this.type = type;
+        this.title = title;
         this.content = content;
         this.likesCount = 0;
         this.isAdopted = false;

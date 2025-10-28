@@ -1,4 +1,4 @@
-package com.demoday.ddangddangddang.domain;
+package com.demoday.ddangddangddang.domain.enums;
 
 public enum JudgmentStage {
     INITIAL, // 초심

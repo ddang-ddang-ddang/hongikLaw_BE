@@ -1,5 +1,7 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.CaseMode;
+import com.demoday.ddangddangddang.domain.enums.CaseStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -26,8 +28,9 @@ public class Case {
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(name = "status", nullable = false, length = 50)
-    private String status;
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private CaseStatus status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -36,7 +39,7 @@ public class Case {
     private LocalDateTime closedAt;
 
     @Builder
-    public Case(CaseMode mode, String title, String status) {
+    public Case(CaseMode mode, String title, String status, CaseStatus status) {
         this.mode = mode;
         this.title = title;
         this.status = status;
@@ -44,9 +47,9 @@ public class Case {
     }
 
     // --- 비즈니스 로직 편의를 위한 메서드들 ---
-    public void updateStatus(String newStatus) {
+    public void updateStatus(CaseStatus newStatus) {
         this.status = newStatus;
-        if ("종료".equals(newStatus)) {
+        if (CaseStatus.DONE.equals(newStatus)) {
             this.closedAt = LocalDateTime.now();
         }
     }

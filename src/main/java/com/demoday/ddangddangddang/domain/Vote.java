@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
