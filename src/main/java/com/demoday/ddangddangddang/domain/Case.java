@@ -39,7 +39,7 @@ public class Case {
     private LocalDateTime closedAt;
 
     @Builder
-    public Case(CaseMode mode, String title, String status, CaseStatus status) {
+    public Case(CaseMode mode, String title, CaseStatus status) {
         this.mode = mode;
         this.title = title;
         this.status = status;
