@@ -27,21 +27,27 @@ public class ArgumentInitial {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 50)
-    private String type; // 찬성/반대
+    private DebateSide type; // 'A' 또는 'B'
 
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT") // TEXT 타입 명시
-    private String content;
+    @Column(name = "main_argument", nullable = false, columnDefinition = "TEXT")
+    private String mainArgument;
+
+    @Column(name = "reasoning", nullable = false, columnDefinition = "TEXT")
+    private String reasoning;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Builder
-    public ArgumentInitial(Case aCase, User user, String type, String content) {
+
+    public ArgumentInitial(Case aCase, User user, DebateSide type, String mainArgument, String reasoning) {
         this.aCase = aCase;
         this.user = user;
         this.type = type;
-        this.content = content;
+        this.mainArgument = mainArgument;
+        this.reasoning = reasoning;
         this.createdAt = LocalDateTime.now();
     }
 }

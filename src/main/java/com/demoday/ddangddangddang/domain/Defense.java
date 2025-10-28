@@ -27,8 +27,9 @@ public class Defense {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 50)
-    private String type; // 찬성/반대 (변론의 입장)
+    private DebateSide type; // 'A' 또는 'B'
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
@@ -43,7 +44,7 @@ public class Defense {
     private LocalDateTime createdAt;
 
     @Builder
-    public Defense(Case aCase, User user, String type, String content) {
+    public Defense(Case aCase, User user, DebateSide type, String content) {
         this.aCase = aCase;
         this.user = user;
         this.type = type;

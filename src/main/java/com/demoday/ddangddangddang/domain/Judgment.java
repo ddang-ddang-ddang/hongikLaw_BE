@@ -23,8 +23,9 @@ public class Judgment {
     @JoinColumn(name = "case_id", nullable = false)
     private Case aCase;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "stage", nullable = false, length = 50)
-    private String stage; // 초심/최종심
+    private JudgmentStage stage; // 'INITIAL' 또는 'FINAL'
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content; // 판결문 내용
@@ -36,7 +37,7 @@ public class Judgment {
     private String basedOn; // 판결 근거 데이터
 
     @Builder
-    public Judgment(Case aCase, String stage, String content, String basedOn) {
+    public Judgment(Case aCase, JudgmentStage stage, String content, String basedOn) {
         this.aCase = aCase;
         this.stage = stage;
         this.content = content;

@@ -27,14 +27,15 @@ public class Vote {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "choice", nullable = false, length = 50)
-    private String choice; // 찬성/반대
+    private DebateSide choice; // 'A' 또는 'B'
 
     @Column(name = "voted_at", nullable = false, updatable = false)
     private LocalDateTime votedAt;
 
     @Builder
-    public Vote(Case aCase, User user, String choice) {
+    public Vote(Case aCase, User user, DebateSide choice) {
         this.aCase = aCase;
         this.user = user;
         this.choice = choice;

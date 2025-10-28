@@ -19,13 +19,9 @@ public class Case {
     @Column(name = "case_id", nullable = false)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "creator_user_id", nullable = false)
-    private User creatorUser;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "opponent_user_id") // 상대방 User FK (nullable)
-    private User opponentUser;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mode", nullable = false, length = 50)
+    private CaseMode mode; // "SOLO", "PARTY" 등 저장
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;
@@ -40,9 +36,8 @@ public class Case {
     private LocalDateTime closedAt;
 
     @Builder
-    public Case(User creatorUser, User opponentUser, String title, String status) {
-        this.creatorUser = creatorUser;
-        this.opponentUser = opponentUser; // null 가능
+    public Case(CaseMode mode, String title, String status) {
+        this.mode = mode;
         this.title = title;
         this.status = status;
         this.createdAt = LocalDateTime.now();
