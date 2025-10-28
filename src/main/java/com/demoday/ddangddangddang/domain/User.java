@@ -51,8 +51,8 @@ public class User {
         this.rank = rank;
         this.nickname = nickname;
         this.email = email;
-        this.password = password;
         this.createdAt = LocalDateTime.now();
+        this.password = password;
         this.exp = exp;
         this.totalPoints = totalPoints;
         this.winCnt = winCnt;

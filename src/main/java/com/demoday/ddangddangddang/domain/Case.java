@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.CaseMode;
 import com.demoday.ddangddangddang.domain.enums.CaseStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -8,8 +9,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "cases")
@@ -21,6 +20,10 @@ public class Case {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "case_id", nullable = false)
     private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mode", nullable = false, length = 50)
+    private CaseMode mode; // "SOLO", "PARTY" 등 저장
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;
@@ -36,7 +39,8 @@ public class Case {
     private LocalDateTime closedAt;
 
     @Builder
-    public Case(String title, CaseStatus status) {
+    public Case(CaseMode mode, String title, CaseStatus status) {
+        this.mode = mode;
         this.title = title;
         this.status = status;
         this.createdAt = LocalDateTime.now();

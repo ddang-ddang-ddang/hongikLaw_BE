@@ -32,23 +32,22 @@ public class ArgumentInitial {
     @Column(name = "agree_status", nullable = false)
     private AgreeStatus agreeStatus; // 찬성/반대
 
-    @Column(name = "title", nullable = false)
-    private String title;
+    @Column(name = "main_argument", nullable = false, columnDefinition = "TEXT")
+    private String mainArgument;
 
-    @Lob
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT") // TEXT 타입 명시
-    private String content;
+    @Column(name = "reasoning", nullable = false, columnDefinition = "TEXT")
+    private String reasoning;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Builder
-    public ArgumentInitial(Case aCase, User user, AgreeStatus agreeStatus, String title, String content) {
+    public ArgumentInitial(Case aCase, User user, AgreeStatus agreeStatus, String mainArgument, String reasoning) {
         this.aCase = aCase;
         this.user = user;
+        this.mainArgument = mainArgument;
+        this.reasoning = reasoning;
         this.agreeStatus = agreeStatus;
-        this.title = title;
-        this.content = content;
         this.createdAt = LocalDateTime.now();
     }
 }

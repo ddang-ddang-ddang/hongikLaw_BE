@@ -1,6 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
-import com.demoday.ddangddangddang.domain.enums.AgreeStatus;
+import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -37,24 +37,28 @@ public class Rebuttal {
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Rebuttal> children = new ArrayList<>(); // 자식 반론들
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 50)
+    private DebateSide type; // 'A' 또는 'B'
+
     @Lob
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "likes_count", nullable = false)
+    private Integer likesCount;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "agree_status", nullable = false)
-    private AgreeStatus agreeStatus;
-
     @Builder
-    public Rebuttal(Defense defense, Rebuttal parent, User user, AgreeStatus agreeStatus, String content) {
+    public Rebuttal(Defense defense, User user, DebateSide type, String content, Rebuttal parent) {
         this.defense = defense;
         this.parent = parent;
         this.user = user;
-        this.agreeStatus = agreeStatus;
+        this.type = type;
         this.content = content;
+        this.likesCount = 0;
         this.createdAt = LocalDateTime.now();
     }
 }
