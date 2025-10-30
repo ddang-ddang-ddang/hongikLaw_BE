@@ -21,6 +21,8 @@ public class User extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_rank", nullable = false)
     private Rank rank;
 
     @Column(name = "nickname", nullable = false, unique = true, length = 255)

@@ -15,3 +15,7 @@ spring:
       hibernate:
         show_sql: true # 생성되는 SQL 쿼리를 로그로 확인
         format_sql: true
+
+jwt:
+  secret:
+    key: ${JWT_SECRET_KEY}
