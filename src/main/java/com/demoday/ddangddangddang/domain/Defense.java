@@ -2,10 +2,7 @@ package com.demoday.ddangddangddang.domain;
 
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -13,7 +10,9 @@ import java.time.LocalDateTime;
 @Table(name = "defenses")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Defense {
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+public class Defense extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,9 +44,6 @@ public class Defense {
     @Column(name = "is_adopted", nullable = false)
     private Boolean isAdopted; // 최종심 채택 여부
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
     @Builder
     public Defense(Case aCase, User user, DebateSide type, String title, String content) {
         this.aCase = aCase;
@@ -57,7 +53,6 @@ public class Defense {
         this.content = content;
         this.likesCount = 0;
         this.isAdopted = false;
-        this.createdAt = LocalDateTime.now();
     }
 
     // --- 비즈니스 로직 편의를 위한 메서드들 ---

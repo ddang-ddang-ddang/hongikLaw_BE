@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.domain;
 
 import com.demoday.ddangddangddang.domain.enums.AgreeStatus;
+import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 @Table(name = "argument_initials")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ArgumentInitial {
+public class ArgumentInitial extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,8 +30,8 @@ public class ArgumentInitial {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "agree_status", nullable = false)
-    private AgreeStatus agreeStatus; // 찬성/반대
+    @Column(name = "type", nullable = false)
+    private DebateSide type; // 찬성/반대
 
     @Column(name = "main_argument", nullable = false, columnDefinition = "TEXT")
     private String mainArgument;
@@ -38,16 +39,12 @@ public class ArgumentInitial {
     @Column(name = "reasoning", nullable = false, columnDefinition = "TEXT")
     private String reasoning;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
     @Builder
-    public ArgumentInitial(Case aCase, User user, AgreeStatus agreeStatus, String mainArgument, String reasoning) {
+    public ArgumentInitial(Case aCase, User user, DebateSide type, String mainArgument, String reasoning) {
         this.aCase = aCase;
         this.user = user;
         this.mainArgument = mainArgument;
         this.reasoning = reasoning;
-        this.agreeStatus = agreeStatus;
-        this.createdAt = LocalDateTime.now();
+        this.type = type;
     }
 }
