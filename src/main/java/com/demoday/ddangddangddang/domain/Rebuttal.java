@@ -2,10 +2,7 @@ package com.demoday.ddangddangddang.domain;
 
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -15,7 +12,9 @@ import java.util.List;
 @Table(name = "rebuttals")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Rebuttal {
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+public class Rebuttal extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,9 +47,6 @@ public class Rebuttal {
     @Column(name = "likes_count", nullable = false)
     private Integer likesCount;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
     @Builder
     public Rebuttal(Defense defense, User user, DebateSide type, String content, Rebuttal parent) {
         this.defense = defense;
@@ -59,6 +55,5 @@ public class Rebuttal {
         this.type = type;
         this.content = content;
         this.likesCount = 0;
-        this.createdAt = LocalDateTime.now();
     }
 }

@@ -2,15 +2,14 @@ package com.demoday.ddangddangddang.domain;
 
 import com.demoday.ddangddangddang.domain.enums.ContentType;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(name = "likes") // DB 테이블명은 보통 복수형을 사용합니다.
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
 public class Like {
 
     @Id

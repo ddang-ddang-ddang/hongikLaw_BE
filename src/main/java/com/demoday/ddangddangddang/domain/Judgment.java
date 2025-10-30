@@ -2,10 +2,7 @@ package com.demoday.ddangddangddang.domain;
 
 import com.demoday.ddangddangddang.domain.enums.JudgmentStage;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -13,7 +10,9 @@ import java.time.LocalDateTime;
 @Table(name = "judgments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Judgment {
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+public class Judgment extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,9 +30,6 @@ public class Judgment {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content; // 판결문 내용
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
     @Column(name = "based_on", columnDefinition = "TEXT") // TEXT 타입, null 허용
     private String basedOn; // 판결 근거 데이터
 
@@ -42,7 +38,6 @@ public class Judgment {
         this.aCase = aCase;
         this.stage = stage;
         this.content = content;
-        this.createdAt = LocalDateTime.now();
         this.basedOn = basedOn;
     }
 }

@@ -2,18 +2,19 @@ package com.demoday.ddangddangddang.domain;
 
 import com.demoday.ddangddangddang.domain.enums.Rank;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class User {
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,9 +32,6 @@ public class User {
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
     @Column(name = "exp", nullable = false)
     private Long exp;
 
@@ -46,12 +44,14 @@ public class User {
     @Column(name = "lose_cnt")
     private Integer loseCnt = 0;
 
+    @OneToMany(mappedBy = "user")
+    private List<CaseParticipation> participations = new ArrayList<>();
+
     @Builder
     public User(Rank rank, String nickname, String email, String password, Long exp, Integer totalPoints, Integer winCnt, Integer loseCnt) {
         this.rank = rank;
         this.nickname = nickname;
         this.email = email;
-        this.createdAt = LocalDateTime.now();
         this.password = password;
         this.exp = exp;
         this.totalPoints = totalPoints;

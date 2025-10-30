@@ -2,10 +2,7 @@ package com.demoday.ddangddangddang.domain;
 
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -13,7 +10,9 @@ import java.time.LocalDateTime;
 @Table(name = "votes")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Vote {
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+public class Vote extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,17 +28,13 @@ public class Vote {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "choice", nullable = false, length = 50)
-    private DebateSide choice; // 'A' 또는 'B'
-
-    @Column(name = "voted_at", nullable = false, updatable = false)
-    private LocalDateTime votedAt;
+    @Column(name = "type", nullable = false, length = 50)
+    private DebateSide type; // 'A' 또는 'B'
 
     @Builder
-    public Vote(Case aCase, User user, DebateSide choice) {
+    public Vote(Case aCase, User user, DebateSide type) {
         this.aCase = aCase;
         this.user = user;
-        this.choice = choice;
-        this.votedAt = LocalDateTime.now();
+        this.type = type;
     }
 }
