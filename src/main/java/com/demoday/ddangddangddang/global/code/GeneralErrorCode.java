@@ -24,7 +24,10 @@ public enum GeneralErrorCode implements BaseErrorCode {
     //요청 파라미터 에러
     MISSING_PARAMETER(HttpStatus.BAD_REQUEST, "REQ_4001", "필수 파라미터가 누락되었습니다."),
     INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "REQ_4002", "파라미터 형식이 잘못되었습니다."),
-    UNSUPPORTED_CONTENT_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "REQ_4151", "지원하지 않는 Content-Type입니다.");
+    UNSUPPORTED_CONTENT_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "REQ_4151", "지원하지 않는 Content-Type입니다."),
+
+    //유저 에러
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND,"USER_4041","유저를 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
