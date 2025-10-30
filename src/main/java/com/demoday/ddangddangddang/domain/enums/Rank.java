@@ -1,5 +1,5 @@
 package com.demoday.ddangddangddang.domain.enums;
 
 public enum Rank {
-    수습생, 변호사; //추가 및 수정 예정
+    a,b,c,d,e,f,g,h ; //추가 및 수정 예정
 }
