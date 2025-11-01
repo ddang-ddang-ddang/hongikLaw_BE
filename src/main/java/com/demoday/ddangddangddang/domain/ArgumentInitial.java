@@ -1,6 +1,5 @@
 package com.demoday.ddangddangddang.domain;
 
-import com.demoday.ddangddangddang.domain.enums.AgreeStatus;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -39,6 +38,9 @@ public class ArgumentInitial extends BaseEntity {
     @Column(name = "reasoning", nullable = false, columnDefinition = "TEXT")
     private String reasoning;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     @Builder
     public ArgumentInitial(Case aCase, User user, DebateSide type, String mainArgument, String reasoning) {
         this.aCase = aCase;
@@ -46,5 +48,6 @@ public class ArgumentInitial extends BaseEntity {
         this.mainArgument = mainArgument;
         this.reasoning = reasoning;
         this.type = type;
+        this.createdAt = LocalDateTime.now();
     }
 }

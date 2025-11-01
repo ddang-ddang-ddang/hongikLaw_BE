@@ -30,14 +30,26 @@ public class Judgment extends BaseEntity {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content; // 판결문 내용
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     @Column(name = "based_on", columnDefinition = "TEXT") // TEXT 타입, null 허용
     private String basedOn; // 판결 근거 데이터
 
+    @Column(name = "ratio_a", nullable = false)
+    private Integer ratioA;
+
+    @Column(name = "ratio_b", nullable = false)
+    private Integer ratioB;
+
     @Builder
-    public Judgment(Case aCase, JudgmentStage stage, String content, String basedOn) {
+    public Judgment(Case aCase, JudgmentStage stage, String content, String basedOn, Integer ratioA, Integer ratioB) {
         this.aCase = aCase;
         this.stage = stage;
         this.content = content;
+        this.createdAt = LocalDateTime.now();
         this.basedOn = basedOn;
+        this.ratioA = ratioA;
+        this.ratioB = ratioB;
     }
 }
