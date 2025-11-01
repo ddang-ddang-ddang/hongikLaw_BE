@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class MypageService {
-    //등급, 전적, 사건기록, 상세조회
+    //등급, 전적, 사건기록, 진행중인 사건
     private final UserRepository userRepository;
     private final CaseRepository caseRepository;
     private final CaseParticipationRepository caseParticipationRepository;
