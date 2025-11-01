@@ -1,36 +1,31 @@
 package com.demoday.ddangddangddang.service.mypage;
 
-import com.demoday.ddangddangddang.domain.ArgumentInitial;
-import com.demoday.ddangddangddang.domain.Case;
-import com.demoday.ddangddangddang.domain.CaseParticipation;
-import com.demoday.ddangddangddang.domain.User;
-import com.demoday.ddangddangddang.domain.mypage.dto.RankResponseDto;
-import com.demoday.ddangddangddang.domain.mypage.dto.RecordResponseDto;
-import com.demoday.ddangddangddang.domain.mypage.dto.UserArchiveResponseDto;
+import com.demoday.ddangddangddang.domain.*;
+import com.demoday.ddangddangddang.dto.mypage.RankResponseDto;
+import com.demoday.ddangddangddang.dto.mypage.RecordResponseDto;
+import com.demoday.ddangddangddang.dto.mypage.UserAchievementResponseDto;
+import com.demoday.ddangddangddang.dto.mypage.UserArchiveResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
-import com.demoday.ddangddangddang.repository.ArgumentInitialRepository;
-import com.demoday.ddangddangddang.repository.CaseParticipationRepository;
-import com.demoday.ddangddangddang.repository.CaseRepository;
-import com.demoday.ddangddangddang.repository.UserRepository;
+import com.demoday.ddangddangddang.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class MypageService {
-    //등급, 전적, 사건기록, 진행중인 사건
+    //등급, 전적, 사건기록, 진행중인 사건, 업적
     private final UserRepository userRepository;
     private final CaseRepository caseRepository;
     private final CaseParticipationRepository caseParticipationRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
+    private final UserAchievementRepository userAchievementRepository;
 
     public ApiResponse<RankResponseDto> getRank(Long userId) {
         User user = userRepository.findById(userId)
@@ -88,5 +83,30 @@ public class MypageService {
                 .collect(Collectors.toList());
 
         return ApiResponse.onSuccess("유저 사건 리스트 조회 성공",responseDtos);
+    }
+
+    //업적 조회
+    public ApiResponse<List<UserAchievementResponseDto>> getAchievement(Long userId){
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
+
+        List<UserAchievement> achievements = userAchievementRepository.findByUser(user);
+
+        List<UserAchievementResponseDto> responseDtos = achievements.stream()
+                .map(userAchievement -> {
+                    Achievement achievement = userAchievement.getAchievement();
+
+                    return UserAchievementResponseDto.builder()
+                            .userId(userId) // userAchievement.getUser().getId() 보다 파라미터 사용이 효율적
+                            .achievementId(achievement.getId())
+                            .achievementName(achievement.getTitle())
+                            .achievementDescription(achievement.getDescription())
+                            .achievementIconUrl(achievement.getIconUrl())
+                            .achievementTime(userAchievement.getEarnedAt()) // UserAchievement의 달성 시간 필드 (예: getCreatedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return ApiResponse.onSuccess("유저 업적 조회 성공",responseDtos);
     }
 }

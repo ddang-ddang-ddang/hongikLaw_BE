@@ -1,4 +1,4 @@
-package com.demoday.ddangddangddang.domain.mypage.dto;
+package com.demoday.ddangddangddang.dto.mypage;
 
 import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.CaseStatus;
