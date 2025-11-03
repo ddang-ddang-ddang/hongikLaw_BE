@@ -7,9 +7,6 @@ spring:
     url: jdbc:mysql://localhost:3306/ddang_test_db?serverTimezone=Asia/Seoul
     username: root
     password: ${MYSQL_PASSWORD}
-    redis:
-      host: localhost  # Redis 서버 주소
-      port: 6379       # Redis 서버 포트
 
   jpa:
     hibernate:
@@ -20,8 +17,17 @@ spring:
         format_sql: true
   cloud:
     aws:
+      s3:
+        bucket: ${AWS_S3_BUCKET}
       region:
-        static: ap-northeast-2
+        static: ${AWS_REGION}
+      credentials:
+        access-key: ${AWS_ACCESS_KEY}
+        secret-key: ${AWS_SECRET_KEY}
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 jwt:
   secret:
@@ -30,3 +36,6 @@ jwt:
 openai:
   api:
     key: ${OPENAI_API_KEY}
+  client:
+    connect-timeout: 10s
+    read-timeout: 60s
