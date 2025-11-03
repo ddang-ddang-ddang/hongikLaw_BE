@@ -2,6 +2,8 @@ package com.demoday.ddangddangddang.controller;
 
 import com.demoday.ddangddangddang.dto.request.LoginRequestDto;
 import com.demoday.ddangddangddang.dto.request.SignupRequestDto;
+import com.demoday.ddangddangddang.dto.request.TokenRefreshRequestDto;
+import com.demoday.ddangddangddang.dto.response.AccessTokenResponseDto;
 import com.demoday.ddangddangddang.dto.response.LoginResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse; // <-- 프로젝트의 ApiResponse 임포트
 import com.demoday.ddangddangddang.service.AuthService;
@@ -42,6 +44,22 @@ public class AuthController {
         ApiResponse<LoginResponseDto> response = ApiResponse.onSuccess(
                 "로그인에 성공하였습니다.",
                 loginResponse // 로그인 성공 시 result에 토큰 정보 포함
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Access Token 재발급
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AccessTokenResponseDto>> refreshAccessToken(
+            @Valid @RequestBody TokenRefreshRequestDto requestDto
+    ) {
+        AccessTokenResponseDto responseDto = authService.refreshAccessToken(requestDto);
+
+        ApiResponse<AccessTokenResponseDto> response = ApiResponse.onSuccess(
+                "액세스 토큰이 성공적으로 재발급되었습니다.",
+                responseDto
         );
         return ResponseEntity.ok(response);
     }

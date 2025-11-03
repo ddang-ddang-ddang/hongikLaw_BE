@@ -12,5 +12,5 @@ import java.util.List;
 public interface ArgumentInitialRepository extends JpaRepository<ArgumentInitial,Long> {
     public List<ArgumentInitial> findByUser(User user);
 
-    List<ArgumentInitial> findByACase(Case aCase);
+    List<ArgumentInitial> findByaCase(Case aCase);
 }

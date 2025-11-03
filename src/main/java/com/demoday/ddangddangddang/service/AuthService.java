@@ -4,15 +4,20 @@ import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.enums.Rank;
 import com.demoday.ddangddangddang.dto.request.LoginRequestDto;
 import com.demoday.ddangddangddang.dto.request.SignupRequestDto;
+import com.demoday.ddangddangddang.dto.request.TokenRefreshRequestDto;
+import com.demoday.ddangddangddang.dto.response.AccessTokenResponseDto;
 import com.demoday.ddangddangddang.dto.response.LoginResponseDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode; // GeneralErrorCode 임포트
 import com.demoday.ddangddangddang.global.exception.GeneralException; // GeneralException 임포트
 import com.demoday.ddangddangddang.global.jwt.JwtUtil;
 import com.demoday.ddangddangddang.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +26,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RedisTemplate<String, String> redisTemplate;
 
     @Transactional
     public void signup(SignupRequestDto requestDto) {
@@ -52,7 +58,6 @@ public class AuthService {
                 .winCnt(0)
                 .loseCnt(0)
                 .build();
-
         userRepository.save(user);
     }
 
@@ -71,8 +76,46 @@ public class AuthService {
         String accessToken = jwtUtil.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtUtil.createRefreshToken();
 
-        // (추후 Refresh Token은 DB나 Redis에 저장하는 로직 필요)
+        // --- [ 4. (수정) Refresh Token을 Redis에 저장 ] ---
+        // (Key: email, Value: refreshToken, Expiry: 7일)
+        redisTemplate.opsForValue().set(
+                user.getEmail(),
+                refreshToken,
+                7, // JwtUtil의 REFRESH_TOKEN_TIME (7일)과 일치시킴
+                TimeUnit.DAYS
+        );
 
         return new LoginResponseDto(accessToken, refreshToken);
+    }
+
+    /**
+     * Access Token 재발급
+     */
+    @Transactional(readOnly = true)
+    public AccessTokenResponseDto refreshAccessToken(TokenRefreshRequestDto requestDto) {
+        String email = requestDto.getEmail();
+        String refreshToken = requestDto.getRefreshToken();
+
+        // 1. Redis에서 email로 저장된 Refresh Token 조회
+        String storedToken = redisTemplate.opsForValue().get(email);
+
+        // 2. Redis에 토큰이 없거나, 요청된 토큰과 일치하지 않으면 예외
+        if (storedToken == null || !storedToken.equals(refreshToken)) {
+            // (GeneralErrorCode에 INVALID_TOKEN이 이미 있습니다)
+            throw new GeneralException(GeneralErrorCode.INVALID_TOKEN, "유효하지 않은 리프레시 토큰입니다.");
+        }
+
+        // 3. (선택 사항) JWT 라이브러리를 통해 토큰 유효성 재검증 (이미 만료되었는지 등)
+        if (!jwtUtil.validateToken(refreshToken)) {
+            throw new GeneralException(GeneralErrorCode.INVALID_TOKEN, "만료되었거나 유효하지 않은 리프레시 토큰입니다.");
+        }
+
+        // 4. 유저 정보로 새 Access Token 생성
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND, "유저를 찾을 수 없습니다."));
+
+        String newAccessToken = jwtUtil.createAccessToken(user.getEmail(), user.getId());
+
+        return new AccessTokenResponseDto(newAccessToken);
     }
 }

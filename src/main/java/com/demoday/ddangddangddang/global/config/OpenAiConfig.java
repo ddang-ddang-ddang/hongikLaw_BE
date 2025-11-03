@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.theokanning.openai.service.OpenAiService; // <-- 이 import가 맞습니다.
 import com.theokanning.openai.service.OpenAiService;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
@@ -18,6 +19,7 @@ public class OpenAiConfig {
 
     @Bean
     public OpenAiService openAiService() {
+        // 'com.theokanning.openai...' (0.18.2) 라이브러리의 Bean 생성
         return new OpenAiService(openAiApiKey, Duration.ofSeconds(60));
     }
 
@@ -32,6 +34,7 @@ public class OpenAiConfig {
 
     @Bean
     public ObjectMapper objectMapper() {
+        // AI가 반환하는 JSON을 파싱하기 위한 ObjectMapper
         return new ObjectMapper();
     }
 }
