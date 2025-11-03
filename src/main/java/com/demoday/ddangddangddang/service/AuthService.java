@@ -39,7 +39,7 @@ public class AuthService {
         String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
 
         // 4. 기본 랭크 설정 (Enum 직접 사용)
-        Rank defaultRank = Rank.수습생;
+        Rank defaultRank = Rank.a;
 
         // 5. 유저 객체 생성 및 저장
         User user = User.builder()
