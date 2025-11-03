@@ -28,14 +28,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CaseService {
 
+
     private final CaseRepository caseRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
     private final JudgmentRepository judgmentRepository;
     private final ChatGptService chatGptService; // <-- [중요] AI 서비스 주입
 
-    /**
-     * 1차 재판(초심) 생성 (솔로 모드)
-     */
+    // 1차 재판(초심) 생성 (솔로 모드)
+
     @Transactional
     public CaseResponseDto createCase(CaseRequestDto requestDto, User user) {
         if (!requestDto.getMode().equals(CaseMode.SOLO)) {
@@ -90,9 +90,8 @@ public class CaseService {
         return new CaseResponseDto(newCase.getId());
     }
 
-    /**
-     * 1차 재판(초심) 결과 조회
-     */
+    //1차 재판(초심) 결과 조회
+
     @Transactional(readOnly = true)
     public JudgmentResponseDto getJudgment(Long caseId, User user) {
         // (솔로 모드이므로 본인이 생성한 사건인지 확인하는 로직 추가)
@@ -102,16 +101,14 @@ public class CaseService {
         // TODO: 본인 확인 로직
 
         // 초심(INITIAL) 판결문 조회
-        Judgment judgment = judgmentRepository.findByACase_IdAndStage(caseId, JudgmentStage.INITIAL)
+        Judgment judgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.INITIAL)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "아직 판결이 완료되지 않았습니다."));
 
         // [수정] DTO 생성자 변경
         return new JudgmentResponseDto(judgment);
     }
 
-    /**
-     * 1차 재판 상태 변경 (종료 또는 2차로)
-     */
+    //1차 재판 상태 변경 (종료 또는 2차로)
     @Transactional
     public void updateCaseStatus(Long caseId, CaseStatusRequestDto requestDto, User user) {
         Case foundCase = caseRepository.findById(caseId)

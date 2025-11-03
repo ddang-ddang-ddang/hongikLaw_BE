@@ -1,7 +1,7 @@
 package com.demoday.ddangddangddang.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.theokanning.openai.service.OpenAiService;
+import com.theokanning.openai.service.OpenAiService; // <-- 이 import가 맞습니다.
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,8 +16,7 @@ public class OpenAiConfig {
 
     @Bean
     public OpenAiService openAiService() {
-        // 'openai-java' 라이브러리의 핵심 서비스 객체
-        // 60초 타임아웃 설정
+        // 'com.theokanning.openai...' (0.18.2) 라이브러리의 Bean 생성
         return new OpenAiService(openAiApiKey, Duration.ofSeconds(60));
     }
 

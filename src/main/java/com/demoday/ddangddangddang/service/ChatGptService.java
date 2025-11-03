@@ -5,8 +5,13 @@ import com.demoday.ddangddangddang.domain.Case;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.theokanning.openai.completion.chat.*;
+
+import com.theokanning.openai.completion.chat.ChatCompletionRequest;
+import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.completion.chat.ChatMessageRole;
+import com.theokanning.openai.completion.chat.ChatCompletionChoice;
 import com.theokanning.openai.service.OpenAiService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,7 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ChatGptService {
 
-    private final OpenAiService openAiService; // OpenAiConfig에서 주입
+    private final OpenAiService openAiService;
     private final ObjectMapper objectMapper; // OpenAiConfig에서 주입
 
     /**
@@ -36,7 +41,7 @@ public class ChatGptService {
                         new ChatMessage(ChatMessageRole.SYSTEM.value(), "당신은 논리적이고 공정한 판사입니다. '땅땅땅' 서비스의 1차 판결을 담당합니다."),
                         new ChatMessage(ChatMessageRole.USER.value(), prompt)
                 ))
-                .responseFormat(new ChatCompletionRequest.ResponseFormat("json_object")) // [중요] JSON 출력 강제
+                //.responseFormat(new ChatCompletionRequest.ResponseFormat("json_object")) 0.18.2 버전에서 지원하지 않는 기능 나중에 버전 올려봅세
                 .temperature(0.7)
                 .build();
 
@@ -75,6 +80,7 @@ public class ChatGptService {
                 .filter(a -> a.getType() == DebateSide.B).findFirst().orElseThrow();
 
         return String.format(
+                // [수정] JSON 모드를 못 쓰므로, 프롬프트에서 JSON만 반환하도록 더 강력하게 지시
                 "다음은 사용자가 입력한 솔로 모드 밸런스 게임입니다. 현명한 판사가 되어 판결을 내려주세요." +
                         "\n\n[주제]: %s" +
                         "\n\n[A측 입장]: %s" +
@@ -82,7 +88,9 @@ public class ChatGptService {
                         "\n\n[B측 입장]: %s" +
                         "\n[B측 근거]: %s" +
                         "\n\n---" +
-                        "\n판결을 다음 JSON 형식에 맞춰서만 응답해주세요. 다른 설명은 절대 추가하지 마세요:" +
+                        "\n[지시사항] 판결을 아래 JSON 형식에 맞춰서 *오직 JSON 코드만* 응답해야 합니다. " +
+                        "JSON 앞뒤로 ```json 이나 다른 설명, 줄바꿈을 절대 추가하지 마세요. " +
+                        "반드시 JSON 객체({ ... })로만 시작하고 끝나야 합니다." +
                         "\n{" +
                         "\n  \"verdict\": \"[판결 내용: '판사일러' 부분에 들어갈 내용. 양측의 주장을 요약하고 객관적으로 분석하는 글]\", " +
                         "\n  \"conclusion\": \"[최종 결론: '결론 땅땅땅' 부분에 들어갈 내용. '...라고 판단된다.'로 끝나는 한 문장 결론]\", " +
