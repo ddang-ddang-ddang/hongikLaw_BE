@@ -27,7 +27,10 @@ public enum GeneralErrorCode implements BaseErrorCode {
     UNSUPPORTED_CONTENT_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "REQ_4151", "지원하지 않는 Content-Type입니다."),
 
     //유저 에러
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND,"USER_4041","유저를 찾을 수 없습니다.");
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND,"USER_4041","유저를 찾을 수 없습니다."),
+
+    //좋아요 에러
+    LIKE_ALREADY_CREATE(HttpStatus.BAD_REQUEST,"LIKE_4001","이미 좋아요를 눌렀습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
