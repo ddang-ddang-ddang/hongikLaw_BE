@@ -26,3 +26,6 @@ jwt:
 openai:
   api:
     key: ${OPENAI_API_KEY}
+  client:
+    connect-timeout: 10s
+    read-timeout: 60s
