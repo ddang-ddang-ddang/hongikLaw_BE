@@ -154,8 +154,6 @@ public class MypageController {
                                             "}")
                     )
             ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 사용자", content = @Content),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "유저를 찾을 수 없습니다", content = @Content)
     })
     @GetMapping("/achievements")
     public ApiResponse<List<UserAchievementResponseDto>> getUserAchievement (@AuthenticationPrincipal(expression = "user") User user) {

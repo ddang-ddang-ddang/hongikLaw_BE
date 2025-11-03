@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.domain;
 
 import com.demoday.ddangddangddang.domain.enums.Rank;
+import com.demoday.ddangddangddang.dto.mypage.UserUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,7 +38,7 @@ public class User extends BaseEntity {
     @Column(name = "exp", nullable = false)
     private Long exp;
 
-    private String profileImageurl;
+    private String profileImageUrl;
 
     @Column(name = "total_points", nullable = false)
     private Integer totalPoints;
@@ -78,5 +79,23 @@ public class User extends BaseEntity {
             throw new IllegalArgumentException("포인트가 부족합니다.");
         }
         this.totalPoints -= amount;
+    }
+
+    public void updateMypageInfo(UserUpdateRequestDto dto) {
+        if(dto.getEmail() != null) {
+            this.email = dto.getEmail();
+        }
+        // 닉네임이 요청에 포함된 경우에만 업데이트
+        if (dto.getNickname() != null) {
+            this.nickname = dto.getNickname();
+        }
+        // 프로필 이미지가 요청에 포함된 경우에만 업데이트
+        if (dto.getProfileImageUrl() != null) {
+            this.profileImageUrl = dto.getProfileImageUrl();
+        }
+    }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 }
