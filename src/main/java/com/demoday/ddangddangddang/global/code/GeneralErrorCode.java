@@ -30,7 +30,10 @@ public enum GeneralErrorCode implements BaseErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND,"USER_4041","유저를 찾을 수 없습니다."),
 
     //좋아요 에러
-    LIKE_ALREADY_CREATE(HttpStatus.BAD_REQUEST,"LIKE_4001","이미 좋아요를 눌렀습니다.");
+    LIKE_ALREADY_CREATE(HttpStatus.BAD_REQUEST,"LIKE_4001","이미 좋아요를 눌렀습니다."),
+
+    //사건 에러
+    CASE_NOT_FOUND(HttpStatus.NOT_FOUND,"CASE_4041","사건을 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
