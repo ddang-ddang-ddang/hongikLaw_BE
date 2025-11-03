@@ -36,6 +36,8 @@ dependencies {
 
 	// AI (ChatGPT)
 	implementation 'com.theokanning.openai-gpt3-java:service:0.18.2'
+	implementation 'com.openai:openai-java:4.6.1'
+	implementation "com.openai:openai-java-client-okhttp:4.6.1"
 
 	// jwt
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
@@ -44,6 +46,9 @@ dependencies {
 
 	//redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	//S3
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3:3.1.1'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'

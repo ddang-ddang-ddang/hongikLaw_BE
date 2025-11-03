@@ -37,6 +37,8 @@ public class User extends BaseEntity {
     @Column(name = "exp", nullable = false)
     private Long exp;
 
+    private String profileImageurl;
+
     @Column(name = "total_points", nullable = false)
     private Integer totalPoints;
 
