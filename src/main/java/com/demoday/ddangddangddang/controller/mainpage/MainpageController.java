@@ -115,6 +115,6 @@ public class MainpageController {
     @GetMapping("/users/defenses")
     public ApiResponse<UserDefenseRebuttalResponseDto> getDefenseList(@AuthenticationPrincipal User user){
         Long userId = user.getId();
-        return mainpageService.getDefensAndRebuttal(userId);
+        return mainpageService.getDefenseAndRebuttal(userId);
     }
 }
