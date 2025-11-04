@@ -2,11 +2,11 @@ package com.demoday.ddangddangddang.service;
 
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.enums.Rank;
-import com.demoday.ddangddangddang.dto.request.LoginRequestDto;
-import com.demoday.ddangddangddang.dto.request.SignupRequestDto;
-import com.demoday.ddangddangddang.dto.request.TokenRefreshRequestDto;
-import com.demoday.ddangddangddang.dto.response.AccessTokenResponseDto;
-import com.demoday.ddangddangddang.dto.response.LoginResponseDto;
+import com.demoday.ddangddangddang.dto.auth.LoginRequestDto;
+import com.demoday.ddangddangddang.dto.auth.SignupRequestDto;
+import com.demoday.ddangddangddang.dto.auth.TokenRefreshRequestDto;
+import com.demoday.ddangddangddang.dto.auth.AccessTokenResponseDto;
+import com.demoday.ddangddangddang.dto.auth.LoginResponseDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode; // GeneralErrorCode 임포트
 import com.demoday.ddangddangddang.global.exception.GeneralException; // GeneralException 임포트
 import com.demoday.ddangddangddang.global.jwt.JwtUtil;
