@@ -1,10 +1,10 @@
 package com.demoday.ddangddangddang.controller;
 
-import com.demoday.ddangddangddang.dto.request.LoginRequestDto;
-import com.demoday.ddangddangddang.dto.request.SignupRequestDto;
-import com.demoday.ddangddangddang.dto.request.TokenRefreshRequestDto;
-import com.demoday.ddangddangddang.dto.response.AccessTokenResponseDto;
-import com.demoday.ddangddangddang.dto.response.LoginResponseDto;
+import com.demoday.ddangddangddang.dto.auth.LoginRequestDto;
+import com.demoday.ddangddangddang.dto.auth.SignupRequestDto;
+import com.demoday.ddangddangddang.dto.auth.TokenRefreshRequestDto;
+import com.demoday.ddangddangddang.dto.auth.AccessTokenResponseDto;
+import com.demoday.ddangddangddang.dto.auth.LoginResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse; // <-- 프로젝트의 ApiResponse 임포트
 import com.demoday.ddangddangddang.service.AuthService;
 import jakarta.validation.Valid;
