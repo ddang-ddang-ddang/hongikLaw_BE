@@ -33,7 +33,7 @@ public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> {
     List<Rebuttal> findAdoptedRebuttalsByCaseId(@Param("caseId") Long caseId);
 
     //반론 좋아요 많은 수
-    List<Rebuttal> findAllByOrderByLikesCountDesc(Long caseId);
+    List<Rebuttal> findTop10ByOrderByLikesCountDesc(Long caseId);
 
     //변론당 좋아요 많은 반론
     List<Rebuttal> findByDefense_IdOrderByLikesCountDesc(Long defenseId);

@@ -1,4 +1,4 @@
-package com.demoday.ddangddangddang.dto.response;
+package com.demoday.ddangddangddang.dto.auth;
 
 import lombok.Getter;
 

@@ -41,7 +41,7 @@ public class MainpageService {
                     Case aCase = participation.getACase();
 
                     //해당 Case에 속한 모든 초기 의견들을 조회
-                    List<ArgumentInitial> arguments = argumentInitialRepository.findByACase(aCase);
+                    List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
 
                     //초기 의견 객체 리스트에서 'mainArgument' 문자열만 추출하여 새로운 리스트 생성
                     List<String> mainArguments = arguments.stream()
@@ -62,7 +62,7 @@ public class MainpageService {
     }
 
     //변호 이력
-    public ApiResponse<UserDefenseRebuttalResponseDto> getDefensAndRebuttal(Long userId){
+    public ApiResponse<UserDefenseRebuttalResponseDto> getDefenseAndRebuttal(Long userId){
         User user = userRepository.findById(userId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
 

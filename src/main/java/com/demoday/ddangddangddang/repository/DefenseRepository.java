@@ -28,4 +28,7 @@ public interface DefenseRepository extends JpaRepository<Defense,Long>{
 
     //좋아요 높은 순
     List<Defense> findAllByACase_IdOrderByLikesCountDesc(Long caseId);
+
+    //좋아요 높은 순
+    List<Defense> findTop10ByACase_IdOrderByLikesCountDesc(Long caseId);
 }

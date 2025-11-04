@@ -1,18 +1,13 @@
 package com.demoday.ddangddangddang.service.third;
 
-import com.demoday.ddangddangddang.domain.Case;
-import com.demoday.ddangddangddang.domain.Defense;
-import com.demoday.ddangddangddang.domain.Rebuttal;
+import com.demoday.ddangddangddang.domain.*;
 import com.demoday.ddangddangddang.dto.home.UserDefenseRebuttalResponseDto;
 import com.demoday.ddangddangddang.dto.third.AdoptRequestDto;
 import com.demoday.ddangddangddang.dto.third.AdoptResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
-import com.demoday.ddangddangddang.repository.CaseRepository;
-import com.demoday.ddangddangddang.repository.DefenseRepository;
-import com.demoday.ddangddangddang.repository.RebuttalRepository;
-import com.demoday.ddangddangddang.repository.UserRepository;
+import com.demoday.ddangddangddang.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,14 +22,61 @@ public class AdoptService {
     private final RebuttalRepository rebuttalRepository;
     private final DefenseRepository defenseRepository;
     private final UserRepository userRepository;
+    private final ArgumentInitialRepository argumentInitialRepository;
 
     //좋아요 많은 순으로 노출
-//    public ApiResponse<AdoptResponseDto> getOpinionBest(Long caseId) {
-//
-//    }
+    public ApiResponse<AdoptResponseDto> getOpinionBest(Long caseId) {
+        List<Defense> defenses = defenseRepository.findTop10ByACase_IdOrderByLikesCountDesc(caseId);
+
+        List<Rebuttal> rebuttals = rebuttalRepository.findTop10ByOrderByLikesCountDesc(caseId);
+
+        List<AdoptResponseDto.DefenseAdoptDto> defenseDtos = defenses.stream()
+                .map(defense -> AdoptResponseDto.DefenseAdoptDto.builder()
+                        .caseId(defense.getACase().getId()) // Case 엔티티에서 ID 가져오기
+                        .userId(defense.getUser().getId()) // User 엔티티에서 ID 가져오기
+                        .defenseId(defense.getId())
+                        .debateSide(defense.getType())
+                        .title(defense.getTitle())
+                        .content(defense.getContent())
+                        .likeCount(defense.getLikesCount())
+                        .build())
+                .toList();
+
+        List<AdoptResponseDto.RebuttalAdoptDto> rebuttalDtos = rebuttals.stream()
+                .map(rebuttal -> AdoptResponseDto.RebuttalAdoptDto.builder()
+                        .caseId(rebuttal.getDefense().getACase().getId())
+                        .userId(rebuttal.getUser().getId())
+                        .defenseId(rebuttal.getDefense().getId())
+                        .rebuttalId(rebuttal.getId())
+                        .debateSide(rebuttal.getType())
+                        .content(rebuttal.getContent())
+                        .likeCount(rebuttal.getLikesCount())
+                        .build())
+                .toList();
+
+        AdoptResponseDto responseDto = AdoptResponseDto.builder()
+                .defenses(defenseDtos)
+                .rebuttals(rebuttalDtos)
+                .build();
+
+        return ApiResponse.onSuccess("좋아요 많은 반론 및 변론 조회 완료",responseDto);
+    }
 
     //채택, todo : user가 initial한 사건인지, 유저의 debate 상태 반영 A측 의견이면 A만 채택하도록
     public ApiResponse<String> createAdopt(Long userId, Long caseId, AdoptRequestDto adoptRequestDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+
+        Case aCase = caseRepository.findById(caseId)
+                .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+
+        ArgumentInitial userInitialArgument = allInitialArguments.stream()
+                .filter(arg -> arg.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
+
         // 1. 채택할 변론(Defense) ID 목록 가져오기
         List<Long> defenseIds = adoptRequestDto.getDefenseId();
         if (defenseIds != null && !defenseIds.isEmpty()) {
@@ -79,7 +121,7 @@ public class AdoptService {
                         .content(defense.getContent())
                         .likeCount(defense.getLikesCount())
                         .build())
-                .toList(); // .collect(Collectors.toList())와 동일
+                .toList();
 
         List<AdoptResponseDto.RebuttalAdoptDto> rebuttalDtos = adoptedRebuttals.stream()
                 .map(rebuttal -> AdoptResponseDto.RebuttalAdoptDto.builder()

@@ -9,10 +9,7 @@ import com.demoday.ddangddangddang.domain.enums.CaseStatus;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.domain.enums.JudgmentStage;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
-import com.demoday.ddangddangddang.dto.caseDto.CaseRequestDto;
-import com.demoday.ddangddangddang.dto.caseDto.CaseResponseDto;
-import com.demoday.ddangddangddang.dto.caseDto.CaseStatusRequestDto;
-import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
+import com.demoday.ddangddangddang.dto.caseDto.*;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.repository.ArgumentInitialRepository;
@@ -118,5 +115,30 @@ public class CaseService {
 
         // 요청된 상태(DONE 또는 SECOND)로 변경
         foundCase.updateStatus(requestDto.getStatus());
+    }
+
+    // --- [ 1. 이 메서드를 새로 추가 ] ---
+    @Transactional(readOnly = true)
+    public CaseDetailResponseDto getCaseDetail(Long caseId, User user) {
+        // 1. 사건 조회
+        Case aCase = caseRepository.findById(caseId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "해당 사건을 찾을 수 없습니다."));
+
+        // 2. 1차 입장문 A, B 조회 (A, B 순서로 정렬)
+        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+
+        if (arguments.size() < 2) {
+            throw new GeneralException(GeneralErrorCode.INTERNAL_SERVER_ERROR, "데이터 오류: 입장문을 찾을 수 없습니다.");
+        }
+
+        ArgumentInitial argA = arguments.get(0);
+        ArgumentInitial argB = arguments.get(1);
+
+        // 3. DTO 빌드
+        return CaseDetailResponseDto.builder()
+                .aCase(aCase)
+                .argA(argA)
+                .argB(argB)
+                .build();
     }
 }
