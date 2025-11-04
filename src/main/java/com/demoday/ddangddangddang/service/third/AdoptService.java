@@ -24,7 +24,7 @@ public class AdoptService {
     private final UserRepository userRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
 
-    //좋아요 많은 순으로 노출
+    //좋아요 많은 순으로 노출 todo: 의견 영역에 따라 다르게 보여야함
     public ApiResponse<AdoptResponseDto> getOpinionBest(Long caseId) {
         List<Defense> defenses = defenseRepository.findTop10ByACase_IdOrderByLikesCountDesc(caseId);
 
@@ -48,6 +48,8 @@ public class AdoptService {
                         .userId(rebuttal.getUser().getId())
                         .defenseId(rebuttal.getDefense().getId())
                         .rebuttalId(rebuttal.getId())
+                        .parentId(rebuttal.getParent().getId())
+                        .parentContent(rebuttal.getParent().getContent())
                         .debateSide(rebuttal.getType())
                         .content(rebuttal.getContent())
                         .likeCount(rebuttal.getLikesCount())
@@ -129,6 +131,8 @@ public class AdoptService {
                         .userId(rebuttal.getUser().getId())
                         .defenseId(rebuttal.getDefense().getId())
                         .rebuttalId(rebuttal.getId())
+                        .parentId(rebuttal.getParent().getId())
+                        .parentContent(rebuttal.getParent().getContent())
                         .debateSide(rebuttal.getType())
                         .content(rebuttal.getContent())
                         .likeCount(rebuttal.getLikesCount())
