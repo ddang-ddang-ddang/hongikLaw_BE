@@ -3,6 +3,7 @@ package com.demoday.ddangddangddang.repository;
 import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.User;
+import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -39,4 +40,7 @@ public interface DefenseRepository extends JpaRepository<Defense,Long>{
 
     //좋아요 높은 순
     List<Defense> findTop10ByACase_IdOrderByLikesCountDesc(Long caseId);
+
+    //좋아요 높은 순 + 진영
+    List<Defense> findTop5ByACase_IdAndTypeOrderByLikesCountDesc(Long caseId, DebateSide type);
 }

@@ -18,8 +18,9 @@ public class AdoptController {
     private final AdoptService adoptService;
 
     @GetMapping("/{caseId}/best")
-    public ApiResponse<AdoptResponseDto> getOpinionBest(@PathVariable Long caseId) {
-        return adoptService.getOpinionBest(caseId);
+    public ApiResponse<AdoptResponseDto> getOpinionBest(@AuthenticationPrincipal UserDetailsImpl user,@PathVariable Long caseId) {
+        Long userId = user.getUser().getId();
+        return adoptService.getOpinionBest(userId,caseId);
     }
 
     @PostMapping("/{caseId}")

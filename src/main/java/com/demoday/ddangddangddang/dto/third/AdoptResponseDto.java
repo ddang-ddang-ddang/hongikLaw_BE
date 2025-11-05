@@ -22,7 +22,6 @@ public class AdoptResponseDto {
         private Long userId;
         private Long defenseId;
         private DebateSide debateSide;
-        private String title;
         private String content;
         private int likeCount;
     }

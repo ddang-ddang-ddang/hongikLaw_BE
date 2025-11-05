@@ -1,0 +1,17 @@
+package com.demoday.ddangddangddang.dto.third;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.List;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class JudgementBasisDto {
+    private List<Long> defenseIds;
+    private List<Long> rebuttalIds;
+}
