@@ -26,8 +26,6 @@ public class MainpageService {
     private final DefenseRepository defenseRepository;
     private final RebuttalRepository rebuttalRepository;
 
-    //현재 핫한 재판(추후 2차 재판 기능 구현 완료되면 구현)
-
     //진행중인 재판
     public ApiResponse<List<CaseOnResponseDto>> getCaseList(Long userId){
         User user = userRepository.findById(userId)

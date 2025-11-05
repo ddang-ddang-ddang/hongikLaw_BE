@@ -9,6 +9,7 @@ import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.event.UpdateJudgmentEvent; // [추가] 이벤트
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.repository.*;
+import com.demoday.ddangddangddang.service.ranking.RankingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j; // [추가] log 사용을 위해
 import org.springframework.context.ApplicationEventPublisher; // [추가] 이벤트 발행
@@ -38,6 +39,7 @@ public class CaseService {
     private final VoteRepository voteRepository; // [추가] 2차 재판용
     private final LikeRepository likeRepository; // [추가] 2차 재판용
     private final ApplicationEventPublisher eventPublisher; // [추가] 이벤트 발행기
+    private final RankingService rankingService;
 
     // --- [ 1차 재판(초심) 관련 메서드 ] ---
 
@@ -127,6 +129,8 @@ public class CaseService {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "해당 사건에 대한 조회 권한이 없습니다.");
         }
         // TODO: (추후 확장) 파티 모드일 경우, 참여자인지 확인하는 로직 추가
+
+        rankingService.addCaseScore(caseId,1.0);
 
         // 3. DTO 빌드
         return CaseDetailResponseDto.builder()
@@ -279,6 +283,8 @@ public class CaseService {
 
         Defense savedDefense = defenseRepository.save(defense);
 
+        rankingService.addCaseScore(caseId,5.0);
+
         // AI 판결 업데이트 이벤트 발행 (비동기로 AI 판결을 요청)
         eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId));
 
@@ -316,6 +322,8 @@ public class CaseService {
 
         Rebuttal savedRebuttal = rebuttalRepository.save(rebuttal);
 
+        rankingService.addCaseScore(defense.getACase().getId(),5.0);
+
         // AI 판결 업데이트 이벤트 발행
         eventPublisher.publishEvent(new UpdateJudgmentEvent(defense.getACase().getId()));
 
@@ -346,6 +354,8 @@ public class CaseService {
                 });
 
         voteRepository.save(vote);
+
+        rankingService.addCaseScore(caseId,3.0);
 
         // AI 판결 업데이트 이벤트 발행
         eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId));
