@@ -3,6 +3,7 @@ package com.demoday.ddangddangddang.repository;
 import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.User;
+import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -43,4 +44,7 @@ public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> {
 
     //변론당 좋아요 많은 반론
     List<Rebuttal> findByDefense_IdOrderByLikesCountDesc(Long defenseId);
+
+    //사건별 좋아요가 많은 변론 상위 10개
+    List<Rebuttal> findTop5ByDefense_ACase_IdAndTypeOrderByLikesCountDesc(Long caseId, DebateSide type);
 }

@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.service.third;
 
 import com.demoday.ddangddangddang.domain.*;
+import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.dto.home.UserDefenseRebuttalResponseDto;
 import com.demoday.ddangddangddang.dto.third.AdoptRequestDto;
 import com.demoday.ddangddangddang.dto.third.AdoptResponseDto;
@@ -24,11 +25,27 @@ public class AdoptService {
     private final UserRepository userRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
 
-    //좋아요 많은 순으로 노출 todo: 의견 영역에 따라 다르게 보여야함
-    public ApiResponse<AdoptResponseDto> getOpinionBest(Long caseId) {
-        List<Defense> defenses = defenseRepository.findTop10ByACase_IdOrderByLikesCountDesc(caseId);
+    //좋아요 많은 순으로 노출 (유저가 채택화면에서 보게 될 선택지)
+    public ApiResponse<AdoptResponseDto> getOpinionBest(Long userId, Long caseId) {
 
-        List<Rebuttal> rebuttals = rebuttalRepository.findTop10ByOrderByLikesCountDesc(caseId);
+        Case aCase = caseRepository.findById(caseId)
+                .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        //유저가 initial한 사건인지 확인
+        List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+
+        //하나라도 유저가 참여한 항목 반환
+        ArgumentInitial userInitialArgument = allInitialArguments.stream()
+                .filter(arg -> arg.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
+
+        //유저 진영 확인
+        DebateSide type = userInitialArgument.getType();
+
+        List<Defense> defenses = defenseRepository.findTop5ByACase_IdAndTypeOrderByLikesCountDesc(caseId,type);
+
+        List<Rebuttal> rebuttals = rebuttalRepository.findTop5ByDefense_ACase_IdAndTypeOrderByLikesCountDesc(caseId,type);
 
         List<AdoptResponseDto.DefenseAdoptDto> defenseDtos = defenses.stream()
                 .map(defense -> AdoptResponseDto.DefenseAdoptDto.builder()
@@ -36,7 +53,6 @@ public class AdoptService {
                         .userId(defense.getUser().getId()) // User 엔티티에서 ID 가져오기
                         .defenseId(defense.getId())
                         .debateSide(defense.getType())
-                        .title(defense.getTitle())
                         .content(defense.getContent())
                         .likeCount(defense.getLikesCount())
                         .build())
@@ -64,20 +80,13 @@ public class AdoptService {
         return ApiResponse.onSuccess("좋아요 많은 반론 및 변론 조회 완료",responseDto);
     }
 
-    //채택, todo : user가 initial한 사건인지, 유저의 debate 상태 반영 A측 의견이면 A만 채택하도록
+    //채택(선택함)
     public ApiResponse<String> createAdopt(Long userId, Long caseId, AdoptRequestDto adoptRequestDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(()-> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
 
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
-
-        List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
-
-        ArgumentInitial userInitialArgument = allInitialArguments.stream()
-                .filter(arg -> arg.getUser().getId().equals(userId))
-                .findFirst()
-                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
 
         // 1. 채택할 변론(Defense) ID 목록 가져오기
         List<Long> defenseIds = adoptRequestDto.getDefenseId();
@@ -119,7 +128,6 @@ public class AdoptService {
                         .userId(defense.getUser().getId()) // User 엔티티에서 ID 가져오기
                         .defenseId(defense.getId())
                         .debateSide(defense.getType())
-                        .title(defense.getTitle())
                         .content(defense.getContent())
                         .likeCount(defense.getLikesCount())
                         .build())
