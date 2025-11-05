@@ -13,7 +13,6 @@ import java.util.List;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
 public class Rebuttal extends BaseEntity {
 
     @Id
@@ -45,7 +44,7 @@ public class Rebuttal extends BaseEntity {
     private String content;
 
     @Column(name = "likes_count", nullable = false)
-    private Integer likesCount;
+    private Integer likesCount = 0;
 
     @Column(name = "is_adopted", nullable = false)
     private Boolean isAdopted; // 최종심 채택 여부
@@ -63,5 +62,15 @@ public class Rebuttal extends BaseEntity {
 
     public void markAsAdopted() {
         this.isAdopted = true;
+    }
+
+    public void incrementLikesCount() {
+        this.likesCount++;
+    }
+
+    public void decrementLikesCount() {
+        if (this.likesCount > 0) {
+            this.likesCount--;
+        }
     }
 }

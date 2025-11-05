@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
 public class Vote extends BaseEntity {
 
     @Id
@@ -31,10 +30,25 @@ public class Vote extends BaseEntity {
     @Column(name = "type", nullable = false, length = 50)
     private DebateSide type; // 'A' 또는 'B'
 
+    @Column(name = "voted_at", nullable = false)
+    private LocalDateTime votedAt; // ✅ DB에 존재하는 컬럼 추가
+
     @Builder
     public Vote(Case aCase, User user, DebateSide type) {
         this.aCase = aCase;
         this.user = user;
         this.type = type;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.votedAt == null) {
+            this.votedAt = LocalDateTime.now(); // ✅ 자동으로 현재 시각 삽입
+        }
+    }
+
+    public void updateChoice(DebateSide newChoice) {
+        this.type = newChoice;
+        this.votedAt = LocalDateTime.now(); // ✅ 재투표 시 시간 갱신
     }
 }

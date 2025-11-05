@@ -75,7 +75,6 @@ public class MainpageService {
                         .caseId(defense.getACase().getId())
                         .defenseId(defense.getId())
                         .debateSide(defense.getType())
-                        .title(defense.getTitle())
                         .content(defense.getContent())
                         .likeCount(defense.getLikesCount())
                         .build())

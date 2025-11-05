@@ -29,38 +29,33 @@ public class Defense extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 50)
-    private DebateSide type; // 'A' 또는 'B'
-
-    @Column(name = "title", nullable = false)
-    private String title;
+    private DebateSide type;
 
     @Lob
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Builder.Default
     @Column(name = "likes_count", nullable = false)
-    private Integer likesCount; // 추천 수
+    private Integer likesCount = 0;
 
+    @Builder.Default
     @Column(name = "is_adopted", nullable = false)
-    private Boolean isAdopted; // 최종심 채택 여부
+    private Boolean isAdopted = false;
 
-    @Builder
+    // ✅ 생성자 @Builder 제거 (중복 방지)
     public Defense(Case aCase, User user, DebateSide type, String title, String content) {
         this.aCase = aCase;
         this.user = user;
         this.type = type;
-        this.title = title;
         this.content = content;
-        this.likesCount = 0;
-        this.isAdopted = false;
     }
 
-    // --- 비즈니스 로직 편의를 위한 메서드들 ---
-    public void addLike() {
-        this.likesCount++;
-    }
+    public void markAsAdopted() { this.isAdopted = true; }
 
-    public void markAsAdopted() {
-        this.isAdopted = true;
+    public void incrementLikesCount() { this.likesCount++; }
+
+    public void decrementLikesCount() {
+        if (this.likesCount > 0) this.likesCount--;
     }
 }
