@@ -17,7 +17,7 @@ public class FinalJudgeController {
         return finalJudgeService.createJudge(caseId, aiContent, ratioA, ratioB);
     }
 
-    @GetMapping("/{caseId")
+    @GetMapping("/{caseId}")
     public ApiResponse<JudgementDetailResponseDto> getFinalJudgment(@PathVariable Long caseId){
         return finalJudgeService.getFinalJudgemnet(caseId);
     }

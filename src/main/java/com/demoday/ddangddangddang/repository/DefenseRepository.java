@@ -33,14 +33,14 @@ public interface DefenseRepository extends JpaRepository<Defense,Long>{
     void decrementLikesCount(@Param("defenseId") Long defenseId);
 
     //채택된 변론
-    List<Defense> findByACase_IdAndIsAdopted(Long caseId, Boolean isAdopted);
+    List<Defense> findByaCase_IdAndIsAdopted(Long caseId, Boolean isAdopted);
 
     //좋아요 높은 순
-    List<Defense> findAllByACase_IdOrderByLikesCountDesc(Long caseId);
+    List<Defense> findAllByaCase_IdOrderByLikesCountDesc(Long caseId);
 
     //좋아요 높은 순
-    List<Defense> findTop10ByACase_IdOrderByLikesCountDesc(Long caseId);
+    List<Defense> findTop10ByaCase_IdOrderByLikesCountDesc(Long caseId);
 
     //좋아요 높은 순 + 진영
-    List<Defense> findTop5ByACase_IdAndTypeOrderByLikesCountDesc(Long caseId, DebateSide type);
+    List<Defense> findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(Long caseId, DebateSide type);
 }
