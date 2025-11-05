@@ -9,6 +9,7 @@ import com.demoday.ddangddangddang.repository.DefenseRepository;
 import com.demoday.ddangddangddang.repository.LikeRepository;
 import com.demoday.ddangddangddang.repository.RebuttalRepository;
 import com.demoday.ddangddangddang.repository.UserRepository;
+import com.demoday.ddangddangddang.service.ranking.RankingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class LikeService {
     private final RebuttalRepository rebuttalRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final RankingService rankingService;
 
     /**
      * 변론 / 반론 좋아요 토글
@@ -52,11 +54,13 @@ public class LikeService {
                         .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "변론을 찾을 수 없습니다."));
                 defense.decrementLikesCount();
                 caseIdToUpdate = defense.getACase().getId();
+                rankingService.addCaseScore(caseIdToUpdate, -3.0);
             } else {
                 Rebuttal rebuttal = rebuttalRepository.findById(contentId)
                         .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "반론을 찾을 수 없습니다."));
                 rebuttal.decrementLikesCount();
                 caseIdToUpdate = rebuttal.getDefense().getACase().getId();
+                rankingService.addCaseScore(caseIdToUpdate, -3.0);
             }
 
             isLiked = false;
@@ -75,11 +79,13 @@ public class LikeService {
                         .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "변론을 찾을 수 없습니다."));
                 defense.incrementLikesCount();
                 caseIdToUpdate = defense.getACase().getId();
+                rankingService.addCaseScore(caseIdToUpdate,3.0);
             } else {
                 Rebuttal rebuttal = rebuttalRepository.findById(contentId)
                         .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "반론을 찾을 수 없습니다."));
                 rebuttal.incrementLikesCount();
                 caseIdToUpdate = rebuttal.getDefense().getACase().getId();
+                rankingService.addCaseScore(caseIdToUpdate,3.0);
             }
 
             isLiked = true;

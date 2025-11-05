@@ -2,9 +2,11 @@ package com.demoday.ddangddangddang.controller.mainpage;
 
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.dto.home.CaseOnResponseDto;
+import com.demoday.ddangddangddang.dto.home.CaseSimpleDto;
 import com.demoday.ddangddangddang.dto.home.UserDefenseRebuttalResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.service.mainpage.MainpageService;
+import com.demoday.ddangddangddang.service.ranking.RankingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -27,6 +29,9 @@ import java.util.List;
 @Tag(name = "Mainpage API", description = "메인페이지(홈) 관련 API - by 황신애")
 public class MainpageController {
     private final MainpageService mainpageService;
+    private final RankingService rankingService;
+
+    private final static int topN = 10;
 
     @Operation(summary = "유저의 진행중인 재판 조회", description = "로그인한 유저가 참여하고 있는 진행중인 재판 목록을 조회합니다.")
     @ApiResponses(value = {
@@ -116,5 +121,10 @@ public class MainpageController {
     public ApiResponse<UserDefenseRebuttalResponseDto> getDefenseList(@AuthenticationPrincipal User user){
         Long userId = user.getId();
         return mainpageService.getDefenseAndRebuttal(userId);
+    }
+
+    @GetMapping("/hot")
+    public ApiResponse<List<CaseSimpleDto>> getHotCaseList(){
+        return rankingService.getHotCases(topN);
     }
 }
