@@ -39,12 +39,9 @@ public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> {
             "WHERE d.aCase.id = :caseId AND r.isAdopted = true")
     List<Rebuttal> findAdoptedRebuttalsByCaseId(@Param("caseId") Long caseId);
 
-    //반론 좋아요 많은 수
-    List<Rebuttal> findTop10ByOrderByLikesCountDesc(Long caseId);
-
     //변론당 좋아요 많은 반론
     List<Rebuttal> findByDefense_IdOrderByLikesCountDesc(Long defenseId);
 
     //사건별 좋아요가 많은 변론 상위 10개
-    List<Rebuttal> findTop5ByDefense_ACase_IdAndTypeOrderByLikesCountDesc(Long caseId, DebateSide type);
+    List<Rebuttal> findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(Long caseId, DebateSide type);
 }

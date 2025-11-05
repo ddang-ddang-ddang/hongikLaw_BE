@@ -43,9 +43,9 @@ public class AdoptService {
         //유저 진영 확인
         DebateSide type = userInitialArgument.getType();
 
-        List<Defense> defenses = defenseRepository.findTop5ByACase_IdAndTypeOrderByLikesCountDesc(caseId,type);
+        List<Defense> defenses = defenseRepository.findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(caseId,type);
 
-        List<Rebuttal> rebuttals = rebuttalRepository.findTop5ByDefense_ACase_IdAndTypeOrderByLikesCountDesc(caseId,type);
+        List<Rebuttal> rebuttals = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId,type);
 
         List<AdoptResponseDto.DefenseAdoptDto> defenseDtos = defenses.stream()
                 .map(defense -> AdoptResponseDto.DefenseAdoptDto.builder()
@@ -119,7 +119,7 @@ public class AdoptService {
         Case acase = caseRepository.findById(caseId)
                 .orElseThrow(()-> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        List<Defense> adoptedDefenses = defenseRepository.findByACase_IdAndIsAdopted(caseId,Boolean.TRUE);
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId,Boolean.TRUE);
         List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
         List<AdoptResponseDto.DefenseAdoptDto> defenseDtos = adoptedDefenses.stream()

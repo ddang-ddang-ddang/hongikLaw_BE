@@ -33,7 +33,7 @@ public class FinalJudgeService {
 
     //판결문 저장
     public ApiResponse<Long> createJudge(Long caseId, String aiContent, Integer ratioA, Integer ratioB){
-        List<Defense> defenses = defenseRepository.findByACase_IdAndIsAdopted(caseId, true);
+        List<Defense> defenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
         List<Rebuttal> rebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
         List<Long> adoptedDefenseIds = defenses.stream()
