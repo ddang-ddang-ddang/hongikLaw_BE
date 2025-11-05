@@ -62,7 +62,7 @@ public class MainpageService {
     }
 
     //변호 이력
-    public ApiResponse<UserDefenseRebuttalResponseDto> getDefensAndRebuttal(Long userId){
+    public ApiResponse<UserDefenseRebuttalResponseDto> getDefenseAndRebuttal(Long userId){
         User user = userRepository.findById(userId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
 

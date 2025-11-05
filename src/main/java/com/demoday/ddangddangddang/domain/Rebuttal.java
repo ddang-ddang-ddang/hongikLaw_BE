@@ -46,14 +46,22 @@ public class Rebuttal extends BaseEntity {
     @Column(name = "likes_count", nullable = false)
     private Integer likesCount = 0;
 
+    @Column(name = "is_adopted", nullable = false)
+    private Boolean isAdopted; // 최종심 채택 여부
+
     @Builder
-    public Rebuttal(Defense defense, User user, DebateSide type, String content, Rebuttal parent) {
+    public Rebuttal(Defense defense, User user, DebateSide type, String content, Rebuttal parent, Boolean isAdopted) {
         this.defense = defense;
         this.parent = parent;
         this.user = user;
         this.type = type;
         this.content = content;
         this.likesCount = 0;
+        this.isAdopted = false;
+    }
+
+    public void markAsAdopted() {
+        this.isAdopted = true;
     }
 
     public void incrementLikesCount() {
