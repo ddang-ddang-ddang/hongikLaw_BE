@@ -14,6 +14,14 @@ import java.util.List;
 public interface DefenseRepository extends JpaRepository<Defense,Long>{
     List<Defense> findDefenseByUser(User user);
 
+    // --- [ 1. 이 메서드를 추가합니다 ] ---
+    List<Defense> findAllByaCase_Id(Long caseId);
+
+    // --- [ 2. 이 메서드를 추가합니다 ] ---
+    // 추천수 상위 N개 조회 (AI 배틀용)
+    List<Defense> findTop5ByaCase_IdOrderByLikesCountDesc(Long caseId);
+    // ---------------------------------
+
     @Modifying // (1) 이 쿼리가 DB를 수정함을 알림
     @Query("UPDATE Defense d SET d.likesCount = d.likesCount + 1 WHERE d.id = :defenseId")
     void incrementLikesCount(@Param("defenseId") Long defenseId);

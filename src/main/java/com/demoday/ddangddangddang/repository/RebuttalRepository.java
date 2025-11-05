@@ -11,8 +11,14 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface RebuttalRepository extends JpaRepository<Rebuttal, Integer> {
+public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> { // [수정] Integer -> Long
     List<Rebuttal> findRebuttalByUser(User user);
+
+    // 특정 사건(Case) ID에 속한 모든 반론(Rebuttal)들을 조회
+    List<Rebuttal> findAllByDefense_aCase_Id(Long caseId);
+
+    // 특정 변론(Defense)에 속한 모든 반론(Rebuttal)들을 조회
+    List<Rebuttal> findAllByDefense_Id(Long defenseId);
 
     @Modifying
     @Query("UPDATE Rebuttal r SET r.likesCount = r.likesCount + 1 WHERE r.id = :rebuttalId")

@@ -24,7 +24,7 @@ public class Case extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "mode", nullable = false, length = 50)
-    private CaseMode mode; // "SOLO", "PARTY" 등 저장
+    private CaseMode mode;
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;
@@ -33,11 +33,13 @@ public class Case extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private CaseStatus status;
 
-    @Column(name = "closed_at") // 종료일 (null 허용)
+    @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
     @OneToMany(mappedBy = "aCase", cascade = CascadeType.ALL)
     private List<CaseParticipation> participations = new ArrayList<>();
+
+    // --- [ appealDeadline 필드 삭제 ] ---
 
     @Builder
     public Case(CaseMode mode, String title, CaseStatus status) {
@@ -46,11 +48,15 @@ public class Case extends BaseEntity {
         this.status = status;
     }
 
-    // --- 비즈니스 로직 편의를 위한 메서드들 ---
     public void updateStatus(CaseStatus newStatus) {
         this.status = newStatus;
         if (CaseStatus.DONE.equals(newStatus)) {
             this.closedAt = LocalDateTime.now();
         }
+    }
+
+    // --- [ startAppeal 메서드 수정: deadline 파라미터 제거 ] ---
+    public void startAppeal() {
+        this.status = CaseStatus.SECOND; // 상태를 2차 재판으로 변경
     }
 }
