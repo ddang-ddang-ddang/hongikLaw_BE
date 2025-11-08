@@ -59,17 +59,24 @@ public class AdoptService {
                 .toList();
 
         List<AdoptResponseDto.RebuttalAdoptDto> rebuttalDtos = rebuttals.stream()
-                .map(rebuttal -> AdoptResponseDto.RebuttalAdoptDto.builder()
-                        .caseId(rebuttal.getDefense().getACase().getId())
-                        .userId(rebuttal.getUser().getId())
-                        .defenseId(rebuttal.getDefense().getId())
-                        .rebuttalId(rebuttal.getId())
-                        .parentId(rebuttal.getParent().getId())
-                        .parentContent(rebuttal.getParent().getContent())
-                        .debateSide(rebuttal.getType())
-                        .content(rebuttal.getContent())
-                        .likeCount(rebuttal.getLikesCount())
-                        .build())
+                .map(rebuttal -> {
+                    // ⭐️ 수정된 부분: parent가 null일 수 있으므로 null 체크
+                    Rebuttal parent = rebuttal.getParent();
+                    Long parentId = (parent != null) ? parent.getId() : null;
+                    String parentContent = (parent != null) ? parent.getContent() : null;
+
+                    return AdoptResponseDto.RebuttalAdoptDto.builder()
+                            .caseId(rebuttal.getDefense().getACase().getId())
+                            .userId(rebuttal.getUser().getId())
+                            .defenseId(rebuttal.getDefense().getId())
+                            .rebuttalId(rebuttal.getId())
+                            .parentId(parentId)           // ⭐️ 수정
+                            .parentContent(parentContent) // ⭐️ 수정
+                            .debateSide(rebuttal.getType())
+                            .content(rebuttal.getContent())
+                            .likeCount(rebuttal.getLikesCount())
+                            .build();
+                })
                 .toList();
 
         AdoptResponseDto responseDto = AdoptResponseDto.builder()
@@ -134,17 +141,24 @@ public class AdoptService {
                 .toList();
 
         List<AdoptResponseDto.RebuttalAdoptDto> rebuttalDtos = adoptedRebuttals.stream()
-                .map(rebuttal -> AdoptResponseDto.RebuttalAdoptDto.builder()
-                        .caseId(rebuttal.getDefense().getACase().getId())
-                        .userId(rebuttal.getUser().getId())
-                        .defenseId(rebuttal.getDefense().getId())
-                        .rebuttalId(rebuttal.getId())
-                        .parentId(rebuttal.getParent().getId())
-                        .parentContent(rebuttal.getParent().getContent())
-                        .debateSide(rebuttal.getType())
-                        .content(rebuttal.getContent())
-                        .likeCount(rebuttal.getLikesCount())
-                        .build())
+                .map(rebuttal -> {
+                    // ⭐️ 수정된 부분: parent가 null일 수 있으므로 null 체크
+                    Rebuttal parent = rebuttal.getParent();
+                    Long parentId = (parent != null) ? parent.getId() : null;
+                    String parentContent = (parent != null) ? parent.getContent() : null;
+
+                    return AdoptResponseDto.RebuttalAdoptDto.builder()
+                            .caseId(rebuttal.getDefense().getACase().getId())
+                            .userId(rebuttal.getUser().getId())
+                            .defenseId(rebuttal.getDefense().getId())
+                            .rebuttalId(rebuttal.getId())
+                            .parentId(parentId)
+                            .parentContent(parentContent)
+                            .debateSide(rebuttal.getType())
+                            .content(rebuttal.getContent())
+                            .likeCount(rebuttal.getLikesCount())
+                            .build();
+                })
                 .toList();
 
         AdoptResponseDto responseDto = AdoptResponseDto.builder()

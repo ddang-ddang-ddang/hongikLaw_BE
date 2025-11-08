@@ -5,6 +5,7 @@ import com.demoday.ddangddangddang.dto.home.CaseOnResponseDto;
 import com.demoday.ddangddangddang.dto.home.CaseSimpleDto;
 import com.demoday.ddangddangddang.dto.home.UserDefenseRebuttalResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
+import com.demoday.ddangddangddang.global.security.UserDetailsImpl;
 import com.demoday.ddangddangddang.service.mainpage.MainpageService;
 import com.demoday.ddangddangddang.service.ranking.RankingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -73,8 +74,8 @@ public class MainpageController {
     })
     @SecurityRequirement(name = "JWT TOKEN")
     @GetMapping("/users/cases")
-    public ApiResponse<List<CaseOnResponseDto>> getCaseList(@AuthenticationPrincipal User user){
-        Long userId = user.getId();
+    public ApiResponse<List<CaseOnResponseDto>> getCaseList(@AuthenticationPrincipal UserDetailsImpl user){
+        Long userId = user.getUser().getId();
         return mainpageService.getCaseList(userId);
     }
 
@@ -118,8 +119,8 @@ public class MainpageController {
     })
     @SecurityRequirement(name = "JWT TOKEN")
     @GetMapping("/users/defenses")
-    public ApiResponse<UserDefenseRebuttalResponseDto> getDefenseList(@AuthenticationPrincipal User user){
-        Long userId = user.getId();
+    public ApiResponse<UserDefenseRebuttalResponseDto> getDefenseList(@AuthenticationPrincipal UserDetailsImpl user){
+        Long userId = user.getUser().getId();
         return mainpageService.getDefenseAndRebuttal(userId);
     }
 

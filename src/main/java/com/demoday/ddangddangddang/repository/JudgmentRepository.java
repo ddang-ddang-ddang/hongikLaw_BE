@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface JudgmentRepository extends JpaRepository<Judgment, Long> {
     // caseId와 판결 단계(초심)로 판결문을 찾는 메서드
     Optional<Judgment> findByaCase_IdAndStage(Long caseId, JudgmentStage stage);
+
+    Optional<Judgment> findTopByaCase_IdAndStageOrderByCreatedAtDesc(Long caseId, JudgmentStage stage);
 }

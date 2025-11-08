@@ -40,6 +40,7 @@ public class CaseService {
     private final LikeRepository likeRepository; // [추가] 2차 재판용
     private final ApplicationEventPublisher eventPublisher; // [추가] 이벤트 발행기
     private final RankingService rankingService;
+    private final CaseParticipationRepository caseParticipationRepository;
 
     // --- [ 1차 재판(초심) 관련 메서드 ] ---
 
@@ -56,6 +57,14 @@ public class CaseService {
                 .status(CaseStatus.FIRST)
                 .build();
         caseRepository.save(newCase);
+
+        //caseParticipate 저장
+        CaseParticipation caseParticipation = CaseParticipation.builder()
+                .user(user)
+                .aCase(newCase)
+                .result(CaseResult.PENDING)
+                .build();
+        caseParticipationRepository.save(caseParticipation);
 
         // 2. A측 1차 입장문 생성 및 저장
         ArgumentInitial argumentA = ArgumentInitial.builder()
@@ -391,30 +400,41 @@ public class CaseService {
     @Transactional
     public void updateFinalJudgment(Long caseId) {
         log.info("Starting async judgment update for caseId: {}", caseId);
-        Case aCase = findCaseById(caseId);
 
-        // 1. 추천수 상위 5개 변론 조회
-        List<Defense> topDefenses = defenseRepository.findTop5ByaCase_IdOrderByLikesCountDesc(caseId);
+        // ❗️ findCaseById가 이 클래스의 private 메서드가 아니라면,
+        //    caseRepository.findById를 사용해야 합니다.
+        Case aCase = caseRepository.findById(caseId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        // 2. 투표 결과 조회
+        // 1. ⭐️ [수정] '채택된(adopted)' 변론 및 반론 조회
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
+        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+
+        // 2. 투표 결과 조회 (기존과 동일)
         long votesA = voteRepository.countByaCase_IdAndType(caseId, DebateSide.A);
         long votesB = voteRepository.countByaCase_IdAndType(caseId, DebateSide.B);
 
-        // 3. AI에게 판결 요청 (새로운 2차 판결 메서드 호출)
-        AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(aCase, topDefenses, votesA, votesB);
+        // 3. ⭐️ [수정] AI에게 판결 요청 (새로운 시그니처 사용)
+        AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(
+                aCase,
+                adoptedDefenses,  // 'topDefenses' -> 'adoptedDefenses'
+                adoptedRebuttals, // 'adoptedRebuttals' 추가
+                votesA,
+                votesB
+        );
 
-        // 4. 'FINAL' 판결문 조회 및 업데이트 (없으면 예외 발생 - startAppeal에서 생성 보장)
+        // 4. 'FINAL' 판결문 조회 및 업데이트 (기존과 동일)
         Judgment finalJudgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.FINAL)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INTERNAL_SERVER_ERROR, "2차 판결문이 생성되지 않았습니다."));
 
-        // AI 결과로 판결문 내용 업데이트
+        // AI 결과로 판결문 내용 업데이트 (기존과 동일)
         finalJudgment.updateJudgment(
                 aiResult.getVerdict(),
                 aiResult.getConclusion(),
                 aiResult.getRatioA(),
                 aiResult.getRatioB()
         );
-        judgmentRepository.save(finalJudgment); // 변경 내용 저장
+        // judgmentRepository.save(finalJudgment); // @Transactional이므로 변경 감지로 자동 저장됩니다 (명시적 save도 무방)
         log.info("Finished async judgment update for caseId: {}", caseId);
     }
 

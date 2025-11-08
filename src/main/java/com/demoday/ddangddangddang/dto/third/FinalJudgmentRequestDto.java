@@ -5,13 +5,11 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
-@Builder
 @Getter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AdoptRequestDto {
-    private List<Long> defenseId;
-    private List<Long> rebuttalId;
+public class FinalJudgmentRequestDto {
+    private Long votesA;
+    private Long votesB;
 }
