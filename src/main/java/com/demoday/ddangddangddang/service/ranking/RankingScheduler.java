@@ -3,6 +3,7 @@ package com.demoday.ddangddangddang.service.ranking;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -14,7 +15,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RankingScheduler {
 
-    private final RedisTemplate<String, String> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private static final String HOT_CASES_KEY = "hot_cases";
     private static final double DECAY_FACTOR = 0.95; // 1시간마다 5%씩 점수 감소
     private static final double MIN_SCORE_THRESHOLD = 1.0; // 최소 점수 (이하이면 삭제)
