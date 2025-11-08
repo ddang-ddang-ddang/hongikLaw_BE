@@ -26,8 +26,11 @@ spring:
         secret-key: ${AWS_SECRET_KEY}
   data:
     redis:
-      host: localhost
+      host: ${REDIS_HOST}
       port: 6379
+      password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: true
 
 jwt:
   secret:

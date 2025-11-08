@@ -2,12 +2,13 @@ package com.demoday.ddangddangddang.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 public class RedisExampleService {
     @Autowired
-    private RedisTemplate<String, String> redisTemplate; // 문자열을 다룰 RedisTemplate 주입
+    private StringRedisTemplate redisTemplate; // 문자열을 다룰 StringRedisTemplate 주입
 
     // Redis에 데이터 저장 (SET 명령어)
     public void saveData(String key, String value) {
