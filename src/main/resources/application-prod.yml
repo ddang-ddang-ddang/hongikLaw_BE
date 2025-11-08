@@ -4,9 +4,9 @@ server:
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/ddang_test_db?serverTimezone=Asia/Seoul
-    username: root
-    password: ${MYSQL_PASSWORD}
+    url: jdbc:mysql://${RDS_ENDPOINT}:3306/ddangx3_prod?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   jpa:
     hibernate:
