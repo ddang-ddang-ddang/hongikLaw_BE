@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.demoday.ddangddangddang.domain.enums.Rank.a;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -24,7 +26,7 @@ public class User extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "user_rank", nullable = false)
-    private Rank rank;
+    private Rank rank = Rank.a;
 
     @Column(name = "nickname", nullable = false, unique = true, length = 255)
     private String nickname;
