@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.controller.mypage;
 
 import com.demoday.ddangddangddang.domain.User;
+import com.demoday.ddangddangddang.dto.mypage.UserResponseDto;
 import com.demoday.ddangddangddang.dto.mypage.UserUpdateRequestDto;
 import com.demoday.ddangddangddang.dto.mypage.UserUpdateResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
@@ -47,7 +48,7 @@ public class UserInfoUpdateController {
                     """)))
         })
     @GetMapping("/getInfo")
-    public ApiResponse<User> getUserInfo(@AuthenticationPrincipal UserDetailsImpl user) {
+    public ApiResponse<UserResponseDto> getUserInfo(@AuthenticationPrincipal UserDetailsImpl user) {
         Long userId = user.getUser().getId();
         return userInfoModifyService.getUsers(userId);
     }

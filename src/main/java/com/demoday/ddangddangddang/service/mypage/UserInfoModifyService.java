@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.service.mypage;
 
 import com.demoday.ddangddangddang.domain.User;
+import com.demoday.ddangddangddang.dto.mypage.UserResponseDto;
 import com.demoday.ddangddangddang.dto.mypage.UserUpdateRequestDto;
 import com.demoday.ddangddangddang.dto.mypage.UserUpdateResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
@@ -25,17 +26,17 @@ public class UserInfoModifyService {
 
     //마이페이지 사용자 정보
     @Transactional(readOnly = true)
-    public ApiResponse<User> getUsers(Long userId) {
+    public ApiResponse<UserResponseDto> getUsers(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
 
-        User getUser = User.builder()
+        UserResponseDto responseDto = UserResponseDto.builder()
                 .nickname(user.getNickname())
                 .profileImageUrl(user.getProfileImageUrl())
                 .email(user.getEmail())
                 .rank(user.getRank())
                 .build();
-        return ApiResponse.onSuccess("유저 정보 조회 성공",getUser);
+        return ApiResponse.onSuccess("유저 정보 조회 성공",responseDto);
     }
 
     //마이페이지 정보 수정

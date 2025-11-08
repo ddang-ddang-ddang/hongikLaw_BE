@@ -3,6 +3,7 @@ package com.demoday.ddangddangddang.service;
 import com.demoday.ddangddangddang.domain.ArgumentInitial;
 import com.demoday.ddangddangddang.domain.Case;
 import com.demoday.ddangddangddang.domain.Defense;
+import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -82,15 +83,18 @@ public class ChatGptService2 {
     /**
      * 2차(FINAL) 판결 요청 (새 메서드)
      */
-    public AiJudgmentDto requestFinalJudgment(Case aCase, List<Defense> topDefenses, long votesA, long votesB) {
-        String prompt = buildFinalPrompt(aCase, topDefenses, votesA, votesB);
+    public AiJudgmentDto requestFinalJudgment(Case aCase, List<Defense> adoptedDefenses, List<Rebuttal> adoptedRebuttals, long votesA, long votesB) {
+
+        // ⭐️ 프롬프트 빌더 호출 방식 변경
+        String prompt = buildFinalPrompt(aCase, adoptedDefenses, adoptedRebuttals, votesA, votesB);
 
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
                 .model("gpt-4o")
                 .messages(List.of(
                         ChatCompletionMessageParam.ofSystem(
                                 ChatCompletionSystemMessageParam.builder()
-                                        .content("당신은 논리적이고 공정한 최종 판결 판사입니다. ...")
+                                        .content("당신은 논리적이고 공정한 최종 판결 판사입니다. 사용자가 전달한 [채택된 의견]과 [배심원 투표 결과]를 종합하여 최종 판결을 내려야 합니다. " +
+                                                "출력은 반드시 '단 하나의 JSON 객체'만 포함해야 합니다. 코드블록, 주석, 여분 텍스트 금지. 오직 유효한 JSON만.")
                                         .build()
                         ),
                         ChatCompletionMessageParam.ofUser(
@@ -105,9 +109,12 @@ public class ChatGptService2 {
         try {
             ChatCompletion completion = openAIClient.chat().completions().create(params);
 
-            String aiResponseJson = String.valueOf(
-                    completion.choices().get(0).message().content()
-            );
+            String aiResponseJson = completion
+                    .choices().get(0)
+                    .message()
+                    .content()
+                    .orElse("{}"); // ⭐️ .content()가 Optional<String>을 반환할 경우 orElse 추가 (버전따라 다름)
+            // 만약 .content()가 String을 반환하면 .orElse()는 제거
 
             aiResponseJson = sanitizeJson(aiResponseJson);
             log.info("AI 최종 판결 응답 (JSON): {}", aiResponseJson);
@@ -152,26 +159,40 @@ public class ChatGptService2 {
     /**
      * 2차(FINAL) 프롬프트 생성 (새 메서드)
      */
-    private String buildFinalPrompt(Case aCase, List<Defense> topDefenses, long votesA, long votesB) {
-        String topDefenseString = topDefenses.stream()
+    private String buildFinalPrompt(Case aCase, List<Defense> adoptedDefenses, List<Rebuttal> adoptedRebuttals, long votesA, long votesB) {
+
+        // ⭐️ '채택된 변론' 목록 문자열 생성
+        String adoptedDefenseString = adoptedDefenses.stream()
                 .map(d -> String.format(
-                        "- [Top %d] %s측 변론 (추천 %d):\n%s\n",
-                        topDefenses.indexOf(d) + 1,
+                        "- [%s측 채택 변론]: %s",
                         d.getType().name(),
-                        d.getLikesCount(),
                         d.getContent()
                 ))
                 .collect(Collectors.joining("\n"));
 
+        // ⭐️ '채택된 반론' 목록 문자열 생성
+        String adoptedRebuttalString = adoptedRebuttals.stream()
+                .map(r -> String.format(
+                        "- [%s측 채택 반론]: %s",
+                        r.getType().name(),
+                        r.getContent()
+                ))
+                .collect(Collectors.joining("\n"));
+
+        String finalArguments = adoptedDefenseString + "\n" + adoptedRebuttalString;
+        if (adoptedDefenses.isEmpty() && adoptedRebuttals.isEmpty()) {
+            finalArguments = "채택된 의견이 없습니다.";
+        }
+
         return String.format(
-                "다음은 2차 재판(최종심) 판결을 위한 정보입니다. 주제, 상위 5개 변론, 배심원 투표 결과를 종합하여 최종 판결을 내려주세요." +
+                "다음은 2차 재판(최종심) 판결을 위한 정보입니다. 주제, [채택된 최종 의견], [배심원 투표 결과]를 종합하여 최종 판결을 내려주세요." +
                         "\n\n[주제]: %s" +
                         "\n\n[배심원 투표 결과]: A측 (%d표) vs B측 (%d표)" +
-                        "\n\n[추천수 상위 변론 목록]:\n%s" +
+                        "\n\n[채택된 최종 의견 목록]:\n%s" + // ⭐️ '추천수 상위' -> '채택된 최종'
                         "\n\n---" +
-                        "\n[지시사항] 위 정보를 바탕으로 최종 판결을 내리고, 반드시 JSON 객체({ ... })로만 응답해주세요. (JSON 모드 미사용)" +
+                        "\n[지시사항] 위 정보를 바탕으로 최종 판결을 내리고, 반드시 JSON 객체({ ... })로만 응답해주세요." +
                         "\n{" +
-                        "\n  \"verdict\": \"[최종 판결 내용: 배심원 투표 결과와 상위 변론들을 모두 고려한 종합적인 분석 글]\", " +
+                        "\n  \"verdict\": \"[최종 판결 내용: 배심원 투표 결과와 사용자가 채택한 의견들을 모두 고려한 종합적인 분석 글]\", " +
                         "\n  \"conclusion\": \"[최종 결론: '...라고 최종 판결한다.'로 끝나는 한 문장 결론]\", " +
                         "\n  \"ratioA\": [최종 A측 지지 비율(정수, 0-100)], " +
                         "\n  \"ratioB\": [최종 B측 지지 비율(정수, 0-100)]" +
@@ -179,7 +200,7 @@ public class ChatGptService2 {
                         "\n[주의] ratioA와 ratioB의 합은 반드시 100이 되어야 합니다.",
                 aCase.getTitle(),
                 votesA, votesB,
-                topDefenseString.isEmpty() ? "아직 제출된 변론이 없습니다." : topDefenseString
+                finalArguments // ⭐️ 수정된 변수 사용
         );
     }
 

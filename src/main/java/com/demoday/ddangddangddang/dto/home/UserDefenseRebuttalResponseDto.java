@@ -1,15 +1,14 @@
 package com.demoday.ddangddangddang.dto.home;
 
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserDefenseRebuttalResponseDto {
 
     @Getter

@@ -2,13 +2,17 @@ package com.demoday.ddangddangddang.dto.home;
 
 import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.CaseStatus;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Builder
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class CaseOnResponseDto {
     private Long caseId;
     private String title;

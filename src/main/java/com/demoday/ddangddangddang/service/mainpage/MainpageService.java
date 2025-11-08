@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.service.mainpage;
 
 import com.demoday.ddangddangddang.domain.*;
+import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.CaseStatus;
 import com.demoday.ddangddangddang.dto.home.CaseOnResponseDto;
 import com.demoday.ddangddangddang.dto.home.UserDefenseRebuttalResponseDto;
@@ -31,7 +32,7 @@ public class MainpageService {
         User user = userRepository.findById(userId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
 
-        List<CaseParticipation> participations = caseParticipationRepository.findActiveCasesByUser(user);
+        List<CaseParticipation> participations = caseParticipationRepository.findByUserAndResult(user, CaseResult.PENDING);
 
         List<CaseOnResponseDto> responseDtos = participations.stream()
                 .map(participation -> {
@@ -71,6 +72,7 @@ public class MainpageService {
         List<UserDefenseRebuttalResponseDto.DefenseDto> defenseDtos = defenses.stream()
                 .map(defense -> UserDefenseRebuttalResponseDto.DefenseDto.builder()
                         .caseId(defense.getACase().getId())
+                        .title(defense.getACase().getTitle())
                         .defenseId(defense.getId())
                         .debateSide(defense.getType())
                         .content(defense.getContent())
@@ -81,6 +83,7 @@ public class MainpageService {
         List<UserDefenseRebuttalResponseDto.RebuttalDto> rebuttalDtos = rebuttals.stream()
                 .map(rebuttal -> UserDefenseRebuttalResponseDto.RebuttalDto.builder()
                         .caseId(rebuttal.getDefense().getACase().getId())
+                        .defenseId(rebuttal.getId())
                         .rebuttalId(rebuttal.getId())
                         .debateSide(rebuttal.getType())
                         .content(rebuttal.getContent())

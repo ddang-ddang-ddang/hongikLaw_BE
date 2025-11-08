@@ -5,13 +5,16 @@ import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Judgment;
 import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.enums.JudgmentStage;
+import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.third.AdoptResponseDto;
+import com.demoday.ddangddangddang.dto.third.FinalJudgmentRequestDto;
 import com.demoday.ddangddangddang.dto.third.JudgementBasisDto;
 import com.demoday.ddangddangddang.dto.third.JudgementDetailResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.repository.*;
+import com.demoday.ddangddangddang.service.ChatGptService2;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -30,41 +33,51 @@ public class FinalJudgeService {
     private final RebuttalRepository rebuttalRepository;
     private final CaseRepository caseRepository; // aCase를 가져오기 위함
     private final ObjectMapper objectMapper;
+    private final ChatGptService2 chatGptService2;
 
     //판결문 저장
-    public ApiResponse<Long> createJudge(Long caseId, String aiContent, Integer ratioA, Integer ratioB){
-        List<Defense> defenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
-        List<Rebuttal> rebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+    public ApiResponse<Long> createJudge(Long caseId, FinalJudgmentRequestDto voteDto) {
 
-        List<Long> adoptedDefenseIds = defenses.stream()
+        // 1. Case 엔티티 조회
+        Case foundCase = caseRepository.findById(caseId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        // 2. [기존 로직] 채택된 변론/반론 조회 (AI 호출 및 basedOn JSON에 모두 사용)
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
+        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+
+        // 3. ⭐️ ChatGPT 서비스 호출 (수정된 메서드 사용)
+        AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(
+                foundCase,
+                adoptedDefenses,  // <-- 조회한 '채택된' 변론 전달
+                adoptedRebuttals, // <-- 조회한 '채택된' 반론 전달
+                voteDto.getVotesA(),
+                voteDto.getVotesB()
+        );
+
+        // 4. [기존 로직] 'basedOn'에 사용할 ID 목록 JSON 생성
+        List<Long> adoptedDefenseIds = adoptedDefenses.stream()
                 .map(Defense::getId)
                 .toList();
-
-        List<Long> adoptedRebuttalIds = rebuttals.stream()
+        List<Long> adoptedRebuttalIds = adoptedRebuttals.stream()
                 .map(Rebuttal::getId)
                 .toList();
 
-        // 3. DTO 생성 및 JSON 문자열로 변환
         JudgementBasisDto basisDto = new JudgementBasisDto(adoptedDefenseIds, adoptedRebuttalIds);
         String basedOnJson;
         try {
             basedOnJson = objectMapper.writeValueAsString(basisDto);
         } catch (JsonProcessingException e) {
-            // JSON 변환 실패 시 예외 처리
             throw new RuntimeException("Failed to serialize judgment basis", e);
         }
 
-        // 4. Case 엔티티 조회
-        Case foundCase = caseRepository.findById(caseId)
-                .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
-
-        // 5. Judgment 엔티티 생성 및 저장
+        // 5. Judgment 엔티티 생성 (AI 결과 사용)
         Judgment finalJudgment = Judgment.builder()
                 .aCase(foundCase)
                 .stage(JudgmentStage.FINAL)
-                .content(aiContent)   // AI가 생성한 판결문
-                .ratioA(ratioA)       // AI가 생성한 비율
-                .ratioB(ratioB)
+                .content(aiResult.getVerdict())   // AI가 생성한 판결문
+                .ratioA(aiResult.getRatioA())       // AI가 생성한 비율
+                .ratioB(aiResult.getRatioB())
                 .basedOn(basedOnJson) // "근거"로 JSON 문자열 저장
                 .build();
 
@@ -75,7 +88,7 @@ public class FinalJudgeService {
     //판결문 조회
     public ApiResponse<JudgementDetailResponseDto> getFinalJudgemnet(Long caseId){
         // 1. caseId와 'FINAL' 스테이지로 판결(Judgment) 엔티티 조회
-        Judgment judgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.FINAL)
+        Judgment judgment = judgmentRepository.findTopByaCase_IdAndStageOrderByCreatedAtDesc(caseId, JudgmentStage.FINAL)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.JUDGE_NOT_FOUND, "판결을 찾을 수 없습니다."));
 
         // 2. basedOn 필드의 JSON 문자열을 DTO로 파싱 (역직렬화)
@@ -126,7 +139,6 @@ public class FinalJudgeService {
                 .content(judgment.getContent())
                 .ratioA(judgment.getRatioA())
                 .ratioB(judgment.getRatioB())
-                .createdAt(judgment.getCreatedAt()) // (Judgment의 createdAt 필드 사용)
                 .adoptedDefenses(defenseDtos)
                 .adoptedRebuttals(rebuttalDtos)
                 .build();
