@@ -2,6 +2,7 @@ package com.demoday.ddangddangddang.controller.auth;
 
 import com.demoday.ddangddangddang.dto.auth.AccessTokenResponseDto;
 import com.demoday.ddangddangddang.dto.auth.EmailVerificationRequestDto;
+import com.demoday.ddangddangddang.dto.auth.EmailSendRequestDto;
 import com.demoday.ddangddangddang.dto.auth.LoginRequestDto;
 import com.demoday.ddangddangddang.dto.auth.SignupRequestDto;
 import com.demoday.ddangddangddang.dto.auth.TokenRefreshRequestDto;
@@ -81,15 +82,9 @@ public class AuthController {
     })
     @PostMapping("/email/send-code")
     public ResponseEntity<ApiResponse<Void>> sendVerificationCode(
-            @RequestBody Map<String, String> emailMap
+            @Valid @RequestBody EmailSendRequestDto requestDto
     ) {
-        // @Email validation을 위해 DTO를 사용하는 것이 좋으나, 편의상 Map으로 받습니다.
-        String email = emailMap.get("email");
-        if (email == null || !email.contains("@")) {
-            throw new IllegalArgumentException("올바른 이메일 형식이 아닙니다.");
-        }
-
-        emailService.sendVerificationCode(email);
+        emailService.sendVerificationCode(requestDto.getEmail());
         ApiResponse<Void> response = ApiResponse.onSuccess("인증번호가 성공적으로 발송되었습니다.");
         return ResponseEntity.ok(response);
     }
