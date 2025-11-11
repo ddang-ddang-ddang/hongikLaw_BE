@@ -32,8 +32,8 @@ public class AuthService {
     @Transactional
     public void signup(SignupRequestDto requestDto) {
 
-        // 0. 이메일 인증번호 검증
-        emailService.verifyCode(requestDto.getEmail(), requestDto.getEmailAuthCode());
+        // 0. 이메일 '인증 완료' 상태 확인
+        emailService.checkEmailVerified(requestDto.getEmail());
 
         // 1. 이메일 중복 확인
         if (userRepository.existsByEmail(requestDto.getEmail())) {
@@ -65,8 +65,8 @@ public class AuthService {
                 .build();
         userRepository.save(user);
 
-        // 6. 회원가입 성공 시 Redis의 인증번호 삭제
-        emailService.deleteCode(requestDto.getEmail());
+        // 6. 회원가입 성공 시 Redis의 '인증 완료' 플래그 삭제
+        emailService.deleteVerifiedEmailFlag(requestDto.getEmail());
     }
 
     @Transactional
