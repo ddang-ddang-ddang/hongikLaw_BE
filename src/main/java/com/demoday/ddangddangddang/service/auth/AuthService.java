@@ -1,4 +1,4 @@
-package com.demoday.ddangddangddang.service;
+package com.demoday.ddangddangddang.service.auth;
 
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.enums.Rank;
@@ -12,7 +12,6 @@ import com.demoday.ddangddangddang.global.exception.GeneralException; // General
 import com.demoday.ddangddangddang.global.jwt.JwtUtil;
 import com.demoday.ddangddangddang.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,9 +27,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
+    private final EmailService emailService;
 
     @Transactional
     public void signup(SignupRequestDto requestDto) {
+
+        // 0. 이메일 인증번호 검증
+        emailService.verifyCode(requestDto.getEmail(), requestDto.getEmailAuthCode());
+
         // 1. 이메일 중복 확인
         if (userRepository.existsByEmail(requestDto.getEmail())) {
             // GeneralException 사용하도록 수정
@@ -60,6 +64,9 @@ public class AuthService {
                 .loseCnt(0)
                 .build();
         userRepository.save(user);
+
+        // 6. 회원가입 성공 시 Redis의 인증번호 삭제
+        emailService.deleteCode(requestDto.getEmail());
     }
 
     @Transactional

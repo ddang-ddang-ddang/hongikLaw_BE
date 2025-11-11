@@ -14,7 +14,7 @@ import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.repository.*;
-import com.demoday.ddangddangddang.service.ChatGptService2;
+import com.demoday.ddangddangddang.service.ChatGptService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -33,7 +33,7 @@ public class FinalJudgeService {
     private final RebuttalRepository rebuttalRepository;
     private final CaseRepository caseRepository; // aCase를 가져오기 위함
     private final ObjectMapper objectMapper;
-    private final ChatGptService2 chatGptService2;
+    private final ChatGptService chatGptService2;
 
     //판결문 저장
     public ApiResponse<Long> createJudge(Long caseId, FinalJudgmentRequestDto voteDto) {

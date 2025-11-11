@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class ChatGptService2 {
+public class ChatGptService {
 
     private final OpenAIClient openAIClient;
     private final ObjectMapper objectMapper;

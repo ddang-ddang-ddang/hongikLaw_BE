@@ -7,7 +7,7 @@ import com.demoday.ddangddangddang.dto.caseDto.*;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.repository.*;
-import com.demoday.ddangddangddang.service.ChatGptService2;
+import com.demoday.ddangddangddang.service.ChatGptService;
 import com.demoday.ddangddangddang.service.ranking.RankingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ public class CaseService {
     private final CaseRepository caseRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
     private final JudgmentRepository judgmentRepository;
-    private final ChatGptService2 chatGptService2;
+    private final ChatGptService chatGptService2;
     private final RankingService rankingService;
     private final CaseParticipationRepository caseParticipationRepository;
 
