@@ -22,9 +22,12 @@ public class EmailService {
     private static final String AUTH_CODE_PREFIX = "AuthCode:";
     private static final long AUTH_CODE_EXPIRATION_MINUTES = 5; // 5분
 
+    // 인증 완료된 이메일을 저장하기 위한 접두사 및 유효시간
+    private static final String VERIFIED_EMAIL_PREFIX = "VerifiedEmail:";
+    private static final long VERIFIED_EMAIL_EXPIRATION_MINUTES = 10; // 10분 (회원가입 완료까지)
+
     /**
      * 인증번호 이메일 발송
-     * (실제 발송은 주석 처리, 로그로 대체)
      */
     public void sendVerificationCode(String email) {
         String authCode = createAuthCode();
@@ -42,7 +45,7 @@ public class EmailService {
              throw new GeneralException(GeneralErrorCode.INTERNAL_SERVER_ERROR, "이메일 발송에 실패했습니다.");
          }
 
-        // (주의) 실제 발송 대신 로그 출력
+        // 로그 출력
         log.info("[EmailService] 인증번호 발송 요청: {} / 인증번호: {}", email, authCode);
 
         // 2. Redis에 인증번호 저장 (Key: "AuthCode:email@example.com", Value: "123456")
@@ -57,30 +60,60 @@ public class EmailService {
 
     /**
      * 인증번호 검증
+     * 검증 성공시, '인증 완료' 상태를 Redis에 저장
      */
-    public boolean verifyCode(String email, String code) {
+    public void verifyCode(String email, String code) {
         String redisKey = AUTH_CODE_PREFIX + email;
         String storedCode = redisTemplate.opsForValue().get(redisKey);
 
         if (storedCode == null) {
-            // 인증번호가 만료되었거나 존재하지 않음
             throw new GeneralException(GeneralErrorCode.INVALID_AUTH_CODE, "인증번호가 만료되었거나 존재하지 않습니다.");
         }
 
         if (!storedCode.equals(code)) {
-            // 인증번호 불일치
             throw new GeneralException(GeneralErrorCode.INVALID_AUTH_CODE, "인증번호가 일치하지 않습니다.");
         }
 
-        // 검증 성공
-        return true;
+        // 1. 인증번호 검증 성공
+        // 2. 기존 인증번호 삭제
+        redisTemplate.delete(redisKey);
+
+        // 3. '인증 완료' 상태를 10분간 저장
+        String verifiedEmailKey = VERIFIED_EMAIL_PREFIX + email;
+        redisTemplate.opsForValue().set(
+                verifiedEmailKey,
+                "true", // 인증 완료 플래그
+                VERIFIED_EMAIL_EXPIRATION_MINUTES,
+                TimeUnit.MINUTES
+        );
+    }
+
+    /**
+     * 회원가입 시 이메일이 인증되었는지 확인
+     */
+    public void checkEmailVerified(String email) {
+        String redisKey = VERIFIED_EMAIL_PREFIX + email;
+        String verifiedFlag = redisTemplate.opsForValue().get(redisKey);
+
+        if (verifiedFlag == null || !verifiedFlag.equals("true")) {
+            throw new GeneralException(GeneralErrorCode.EMAIL_NOT_VERIFIED, "이메일 인증이 필요합니다.");
+        }
     }
 
     /**
      * 인증 완료 후 Redis에서 코드 삭제
+     * 이제 안 쓰이긴 한데 일단 놔둠
      */
-    public void deleteCode(String email) {
+    public void deleteAuthCode(String email) {
         String redisKey = AUTH_CODE_PREFIX + email;
+        redisTemplate.delete(redisKey);
+    }
+
+    /**
+     * 인증 완료 후 Redis에서 '인증됨' 플래그 삭제
+     */
+    public void deleteVerifiedEmailFlag(String email) {
+        String redisKey = VERIFIED_EMAIL_PREFIX + email;
         redisTemplate.delete(redisKey);
     }
 
