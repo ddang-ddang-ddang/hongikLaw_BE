@@ -27,6 +27,14 @@ public class AdoptController {
         return adoptService.getOpinionBest(userId,caseId);
     }
 
+    @SecurityRequirement(name = "JWT TOKEN")
+    @Operation(summary = "최종심으로 사건 상태 변경")
+    @PostMapping("/{caseId}/third")
+    public ApiResponse<Void> setThird(@AuthenticationPrincipal UserDetailsImpl user, @PathVariable Long caseId){
+        Long userId = user.getUser().getId();
+        return adoptService.changeThird(userId,caseId);
+    }
+
     @Operation(summary = "채택", description = "사용자가 프롬프트에 넣을 변론/반론을 선택합니다")
     @SecurityRequirement(name = "JWT TOKEN")
     @PostMapping("/{caseId}")

@@ -70,8 +70,8 @@ public class AdoptService {
                             .userId(rebuttal.getUser().getId())
                             .defenseId(rebuttal.getDefense().getId())
                             .rebuttalId(rebuttal.getId())
-                            .parentId(parentId)           // ⭐️ 수정
-                            .parentContent(parentContent) // ⭐️ 수정
+                            .parentId(parentId)
+                            .parentContent(parentContent)
                             .debateSide(rebuttal.getType())
                             .content(rebuttal.getContent())
                             .likeCount(rebuttal.getLikesCount())
@@ -87,6 +87,28 @@ public class AdoptService {
         return ApiResponse.onSuccess("좋아요 많은 반론 및 변론 조회 완료",responseDto);
     }
 
+    //사건 진행 third로 바꿈
+    public ApiResponse<Void> changeThird(Long userId, Long caseId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+
+        Case aCase = caseRepository.findById(caseId)
+                .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        //유저가 initial한 사건인지 확인
+        List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+
+        //하나라도 유저가 참여한 항목 반환
+        ArgumentInitial userInitialArgument = allInitialArguments.stream()
+                .filter(arg -> arg.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
+
+        aCase.setThird();
+
+        return ApiResponse.onSuccess("사건 상태 THIRD로 변경 완료",null);
+    }
+
     //채택(선택함)
     public ApiResponse<String> createAdopt(Long userId, Long caseId, AdoptRequestDto adoptRequestDto) {
         User user = userRepository.findById(userId)
@@ -94,6 +116,15 @@ public class AdoptService {
 
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        //유저가 initial한 사건인지 확인
+        List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+
+        //하나라도 유저가 참여한 항목 반환
+        ArgumentInitial userInitialArgument = allInitialArguments.stream()
+                .filter(arg -> arg.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
 
         // 1. 채택할 변론(Defense) ID 목록 가져오기
         List<Long> defenseIds = adoptRequestDto.getDefenseId();
@@ -142,7 +173,6 @@ public class AdoptService {
 
         List<AdoptResponseDto.RebuttalAdoptDto> rebuttalDtos = adoptedRebuttals.stream()
                 .map(rebuttal -> {
-                    // ⭐️ 수정된 부분: parent가 null일 수 있으므로 null 체크
                     Rebuttal parent = rebuttal.getParent();
                     Long parentId = (parent != null) ? parent.getId() : null;
                     String parentContent = (parent != null) ? parent.getContent() : null;

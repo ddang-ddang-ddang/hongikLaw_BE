@@ -59,4 +59,8 @@ public class Case extends BaseEntity {
     public void startAppeal() {
         this.status = CaseStatus.SECOND; // 상태를 2차 재판으로 변경
     }
+
+    public void setThird() {
+        this.status = CaseStatus.THIRD;
+    }
 }
