@@ -7,6 +7,7 @@ import com.demoday.ddangddangddang.global.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -60,7 +61,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**").permitAll() // /api/v1/auth/ 하위 경로는 모두 허용
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // Swagger 허용
                 .requestMatchers("/", "/health-check").permitAll()
-                .requestMatchers("/**").permitAll() // HomeController의 "/" 경로 허용
+                .requestMatchers("/*").permitAll() // HomeController의 "/" 경로 허용
+                .requestMatchers(HttpMethod.GET,"/api/v1/cases/{caseId}","/api/v1/cases/{caseId}/defenses").permitAll()
+                .requestMatchers(HttpMethod.GET,"api/v1/defenses/{defenseId}/rebuttals").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/cases/{caseId}/vote/result").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/cases/{caseId}/debate").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/final/judge/**").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/home/hot").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/final/adopt/{caseId}//**").permitAll()
                 .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
         );
 
@@ -83,7 +91,8 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "https://ddangx3.site",
                 "http://localhost:8080",
-                "http://localhost:3000"
+                "http://localhost:3000",
+                "https://ddang-ddang-ddang-fe-8npo.vercel.app/"
         ));
         config.setAllowedMethods(java.util.List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         config.setAllowedHeaders(java.util.List.of("*"));
