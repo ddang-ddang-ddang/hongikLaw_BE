@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.repository;
 
+import com.demoday.ddangddangddang.domain.Case;
 import com.demoday.ddangddangddang.domain.CaseParticipation;
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.enums.CaseResult;
@@ -16,4 +17,6 @@ public interface CaseParticipationRepository extends JpaRepository<CaseParticipa
     public List<CaseParticipation> findByUser(User user);
 
     List<CaseParticipation> findByUserAndResult(User user, CaseResult caseResult);
+
+    List<CaseParticipation> findByaCase(Case aCase);
 }

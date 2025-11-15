@@ -1,9 +1,8 @@
 package com.demoday.ddangddangddang.service.third;
 
-import com.demoday.ddangddangddang.domain.Case;
-import com.demoday.ddangddangddang.domain.Defense;
-import com.demoday.ddangddangddang.domain.Judgment;
-import com.demoday.ddangddangddang.domain.Rebuttal;
+import com.demoday.ddangddangddang.domain.*;
+import com.demoday.ddangddangddang.domain.enums.CaseResult;
+import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.domain.enums.JudgmentStage;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.third.AdoptResponseDto;
@@ -34,6 +33,8 @@ public class FinalJudgeService {
     private final CaseRepository caseRepository; // aCase를 가져오기 위함
     private final ObjectMapper objectMapper;
     private final ChatGptService chatGptService2;
+    private final CaseParticipationRepository caseParticipationRepository;
+    private final ArgumentInitialRepository argumentInitialRepository;
 
     //판결문 저장
     public ApiResponse<Long> createJudge(Long caseId, FinalJudgmentRequestDto voteDto) {
@@ -82,6 +83,32 @@ public class FinalJudgeService {
                 .build();
 
         judgmentRepository.save(finalJudgment);
+
+        DebateSide winSide = null;
+        if(finalJudgment.getRatioA()>finalJudgment.getRatioB()) {winSide = DebateSide.A;}
+        else if (finalJudgment.getRatioA()<finalJudgment.getRatioB()){
+            winSide = DebateSide.B;
+        }
+
+        //사건-유저 승패 결과 기록
+        List<CaseParticipation> caseParticipations = caseParticipationRepository.findByaCase(foundCase);
+        for (CaseParticipation caseParticipation : caseParticipations) {
+            User user = caseParticipation.getUser();
+            List<ArgumentInitial> argumentInitials = argumentInitialRepository.findByaCaseAndUser(foundCase,user);
+            if(argumentInitials.size() > 1) {caseParticipation.updateResult(CaseResult.SOLO); break;}
+            for(ArgumentInitial argumentInitial : argumentInitials) {
+                if(argumentInitial.getType()== winSide) {caseParticipation.updateResult(CaseResult.WIN);}
+                else if (winSide == null) {
+                    caseParticipation.updateResult(CaseResult.DRAW);
+                }
+                else caseParticipation.updateResult(CaseResult.LOSE);
+            }
+        }
+
+        //변론 유저 승패 결과 기록
+        for (Defense adoptDefense : adoptedDefenses ) {
+        }
+
         return ApiResponse.onSuccess("성공적으로 판결이 저장되었습니다.", finalJudgment.getId());
     }
 

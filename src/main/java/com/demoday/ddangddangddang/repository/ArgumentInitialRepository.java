@@ -16,4 +16,6 @@ public interface ArgumentInitialRepository extends JpaRepository<ArgumentInitial
     List<ArgumentInitial> findByaCaseOrderByTypeAsc(Case aCase);
 
     List<ArgumentInitial> findByaCaseInOrderByTypeAsc(List<Case> cases);
+
+    List<ArgumentInitial> findByaCaseAndUser(Case aCase, User user);
 }
