@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
 import lombok.*;
@@ -43,6 +44,10 @@ public class Defense extends BaseEntity {
     @Column(name = "is_adopted", nullable = false)
     private Boolean isAdopted = false;
 
+    @Builder.Default
+    @Column(name = "is_adopted")
+    private CaseResult caseResult = CaseResult.PENDING;
+
     // ✅ 생성자 @Builder 제거 (중복 방지)
     public Defense(Case aCase, User user, DebateSide type, String title, String content) {
         this.aCase = aCase;
@@ -57,5 +62,10 @@ public class Defense extends BaseEntity {
 
     public void decrementLikesCount() {
         if (this.likesCount > 0) this.likesCount--;
+    }
+
+    // 결과 업데이트 메서드
+    public void updateResult(CaseResult result) {
+        this.caseResult = result;
     }
 }

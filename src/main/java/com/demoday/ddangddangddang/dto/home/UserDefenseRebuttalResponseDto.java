@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.dto.home;
 
+import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import lombok.*;
 
@@ -22,6 +23,7 @@ public class UserDefenseRebuttalResponseDto {
         private String title;
         private String content;
         private int likeCount;
+        private CaseResult caseResult;
     }
 
     @Getter
@@ -35,6 +37,7 @@ public class UserDefenseRebuttalResponseDto {
         private DebateSide debateSide;
         private String content;
         private int likeCount;
+        private CaseResult caseResult;
     }
 
     private List<DefenseDto> defenses;

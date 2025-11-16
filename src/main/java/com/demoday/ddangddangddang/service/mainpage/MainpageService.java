@@ -77,6 +77,7 @@ public class MainpageService {
                         .debateSide(defense.getType())
                         .content(defense.getContent())
                         .likeCount(defense.getLikesCount())
+                        .caseResult(defense.getCaseResult())
                         .build())
                 .collect(Collectors.toList());
 
@@ -88,6 +89,7 @@ public class MainpageService {
                         .debateSide(rebuttal.getType())
                         .content(rebuttal.getContent())
                         .likeCount(rebuttal.getLikesCount())
+                        .caseResult(rebuttal.getCaseResult())
                         .build())
                 .collect(Collectors.toList());
 
