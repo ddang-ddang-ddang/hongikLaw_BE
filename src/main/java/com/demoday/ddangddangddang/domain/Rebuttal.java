@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Builder
 @Entity
 @Table(name = "rebuttals")
 @Getter
@@ -47,7 +49,11 @@ public class Rebuttal extends BaseEntity {
     private Integer likesCount = 0;
 
     @Column(name = "is_adopted", nullable = false)
-    private Boolean isAdopted; // 최종심 채택 여부
+    private Boolean isAdopted = false; // 최종심 채택 여부
+
+    @Builder.Default
+    @Column(name = "case_result")
+    private CaseResult caseResult = CaseResult.PENDING;
 
     @Builder
     public Rebuttal(Defense defense, User user, DebateSide type, String content, Rebuttal parent, Boolean isAdopted) {
@@ -72,5 +78,10 @@ public class Rebuttal extends BaseEntity {
         if (this.likesCount > 0) {
             this.likesCount--;
         }
+    }
+
+    // 결과 업데이트 메서드
+    public void updateResult(CaseResult result) {
+        this.caseResult = result;
     }
 }

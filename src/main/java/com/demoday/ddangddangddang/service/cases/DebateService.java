@@ -141,6 +141,7 @@ public class DebateService {
                 .user(user)
                 .type(requestDto.getSide())
                 .content(requestDto.getContent())
+                .caseResult(CaseResult.PENDING)
                 .build();
         Defense savedDefense = defenseRepository.save(defense);
 
@@ -173,6 +174,7 @@ public class DebateService {
                 .parent(parentRebuttal)
                 .type(requestDto.getType())
                 .content(requestDto.getContent())
+                .caseResult(CaseResult.PENDING)
                 .build();
         Rebuttal savedRebuttal = rebuttalRepository.save(rebuttal);
 

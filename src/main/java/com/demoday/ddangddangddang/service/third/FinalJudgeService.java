@@ -107,6 +107,19 @@ public class FinalJudgeService {
 
         //변론 유저 승패 결과 기록
         for (Defense adoptDefense : adoptedDefenses ) {
+            if(adoptDefense.getType() == winSide){
+                adoptDefense.updateResult(CaseResult.WIN);
+            }
+            else if (winSide == null){
+                adoptDefense.updateResult(CaseResult.DRAW);
+            }
+            else adoptDefense.updateResult(CaseResult.LOSE);
+        }
+
+        for(Rebuttal adoptedRebuttal : adoptedRebuttals){
+            if(adoptedRebuttal.getType() == winSide) {adoptedRebuttal.updateResult(CaseResult.WIN);}
+            else if (winSide == null){adoptedRebuttal.updateResult(CaseResult.DRAW);}
+            else adoptedRebuttal.updateResult(CaseResult.LOSE);
         }
 
         return ApiResponse.onSuccess("성공적으로 판결이 저장되었습니다.", finalJudgment.getId());
