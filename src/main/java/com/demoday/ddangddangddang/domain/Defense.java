@@ -45,7 +45,7 @@ public class Defense extends BaseEntity {
     private Boolean isAdopted = false;
 
     @Builder.Default
-    @Column(name = "is_adopted")
+    @Column(name = "case_result")
     private CaseResult caseResult = CaseResult.PENDING;
 
     // ✅ 생성자 @Builder 제거 (중복 방지)
