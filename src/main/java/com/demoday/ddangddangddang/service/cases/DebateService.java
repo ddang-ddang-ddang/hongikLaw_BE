@@ -52,7 +52,10 @@ public class DebateService {
             throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "이미 2차 재판이 시작되었거나 종료된 사건입니다.");
         }
 
-        foundCase.startAppeal(requestDto.getDeadline());
+        Integer hours = requestDto.getHoursToAdd();
+        LocalDateTime deadline = LocalDateTime.now().plusHours(hours);
+
+        foundCase.startAppeal(deadline);
 
         // 2차 재판 시작 시, 1차 판결문 기반으로 '최종심' 판결문 생성 (이후 계속 업데이트됨)
         Judgment initialJudgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.INITIAL)
