@@ -1,5 +1,9 @@
 package com.demoday.ddangddangddang.domain.enums;
 
 public enum CaseStatus {
-    FIRST,SECOND,THIRD,DONE
+    PENDING, // 상대방 입장 대기 중 (vs모드)
+    FIRST,
+    SECOND,
+    THIRD,
+    DONE
 }

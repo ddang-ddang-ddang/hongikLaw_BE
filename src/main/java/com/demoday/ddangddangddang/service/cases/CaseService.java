@@ -1,19 +1,37 @@
 package com.demoday.ddangddangddang.service.cases;
 
-import com.demoday.ddangddangddang.domain.*;
+// ... (기존 imports) ...
+import com.demoday.ddangddangddang.domain.ArgumentInitial;
+import com.demoday.ddangddangddang.domain.Case;
+import com.demoday.ddangddangddang.domain.Judgment;
+import com.demoday.ddangddangddang.domain.User;
+import com.demoday.ddangddangddang.domain.CaseParticipation; // [추가]
 import com.demoday.ddangddangddang.domain.enums.*;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.*;
+import com.demoday.ddangddangddang.dto.caseDto.second.AppealRequestDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
-import com.demoday.ddangddangddang.repository.*;
+import com.demoday.ddangddangddang.repository.ArgumentInitialRepository;
+import com.demoday.ddangddangddang.repository.CaseRepository;
+import com.demoday.ddangddangddang.repository.JudgmentRepository;
+import com.demoday.ddangddangddang.repository.CaseParticipationRepository; // [추가]
 import com.demoday.ddangddangddang.service.ChatGptService;
+import com.demoday.ddangddangddang.service.auth.AuthService; // [수정] 사용하지 않는 import 제거
+import com.demoday.ddangddangddang.service.cases.DebateService;
 import com.demoday.ddangddangddang.service.ranking.RankingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -23,63 +41,131 @@ public class CaseService {
     private final CaseRepository caseRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
     private final JudgmentRepository judgmentRepository;
-    private final ChatGptService chatGptService2;
-    private final RankingService rankingService;
+    private final ChatGptService chatGptService;
     private final CaseParticipationRepository caseParticipationRepository;
+    private final RankingService rankingService;
 
+    // --- [ createCase 로직 수정 (SOLO/PARTY 분기) ] ---
     @Transactional
     public CaseResponseDto createCase(CaseRequestDto requestDto, User user) {
-        if (!requestDto.getMode().equals(CaseMode.SOLO)) {
-            throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "현재 솔로 모드만 지원합니다.");
+        if (requestDto.getMode().equals(CaseMode.SOLO)) {
+            // 솔로 모드: 기존 로직 수행 (즉시 1차 판결)
+            return createSoloCase(requestDto, user);
+        } else {
+            // VS(파티) 모드: 방 생성 (상대방 대기)
+            return createPartyCase(requestDto, user);
+        }
+    }
+
+    private CaseResponseDto createSoloCase(CaseRequestDto requestDto, User user) {
+        if (requestDto.getArgumentAMain() == null || requestDto.getArgumentBMain() == null) {
+            throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "솔로 모드는 A/B 입장문이 모두 필요합니다.");
         }
 
         Case newCase = Case.builder()
-                .mode(requestDto.getMode())
+                .mode(CaseMode.SOLO)
                 .title(requestDto.getTitle())
                 .status(CaseStatus.FIRST)
                 .build();
         caseRepository.save(newCase);
 
-        CaseParticipation caseParticipation = CaseParticipation.builder()
-                .user(user)
-                .aCase(newCase)
-                .result(CaseResult.PENDING)
-                .build();
-        caseParticipationRepository.save(caseParticipation);
-
-        ArgumentInitial argumentA = ArgumentInitial.builder()
-                .aCase(newCase)
-                .user(user)
-                .type(DebateSide.A)
-                .mainArgument(requestDto.getArgumentAMain())
-                .reasoning(requestDto.getArgumentAReasoning())
-                .build();
+        ArgumentInitial argumentA = ArgumentInitial.builder().aCase(newCase).user(user).type(DebateSide.A).mainArgument(requestDto.getArgumentAMain()).reasoning(requestDto.getArgumentAReasoning()).build();
         argumentInitialRepository.save(argumentA);
-
-        ArgumentInitial argumentB = ArgumentInitial.builder()
-                .aCase(newCase)
-                .user(user)
-                .type(DebateSide.B)
-                .mainArgument(requestDto.getArgumentBMain())
-                .reasoning(requestDto.getArgumentBReasoning())
-                .build();
+        ArgumentInitial argumentB = ArgumentInitial.builder().aCase(newCase).user(user).type(DebateSide.B).mainArgument(requestDto.getArgumentBMain()).reasoning(requestDto.getArgumentBReasoning()).build();
         argumentInitialRepository.save(argumentB);
 
-        List<ArgumentInitial> arguments = List.of(argumentA, argumentB);
-        AiJudgmentDto aiResult = chatGptService2.getAiJudgment(newCase, arguments);
+        caseParticipationRepository.save(CaseParticipation.builder().aCase(newCase).user(user).result(CaseResult.PENDING).build()); // [수정] Result 추가
 
-        Judgment judgment = Judgment.builder()
-                .aCase(newCase)
-                .stage(JudgmentStage.INITIAL)
-                .content(aiResult.getVerdict())
-                .basedOn(aiResult.getConclusion())
-                .ratioA(aiResult.getRatioA())
-                .ratioB(aiResult.getRatioB())
-                .build();
+        List<ArgumentInitial> arguments = List.of(argumentA, argumentB);
+        AiJudgmentDto aiResult = chatGptService.getAiJudgment(newCase, arguments);
+
+        Judgment judgment = Judgment.builder().aCase(newCase).stage(JudgmentStage.INITIAL).content(aiResult.getVerdict()).basedOn(aiResult.getConclusion()).ratioA(aiResult.getRatioA()).ratioB(aiResult.getRatioB()).build();
         judgmentRepository.save(judgment);
 
         return new CaseResponseDto(newCase.getId());
     }
+
+    private CaseResponseDto createPartyCase(CaseRequestDto requestDto, User user) {
+        Case newCase = Case.builder()
+                .mode(CaseMode.PARTY)
+                .title(requestDto.getTitle())
+                .status(CaseStatus.PENDING)
+                .build();
+        caseRepository.save(newCase);
+
+        return new CaseResponseDto(newCase.getId());
+    }
+
+
+    // --- [ 2. (수정) VS모드 1차 입장문 제출 API 로직 (자동 할당) ] ---
+    @Transactional
+    public void createInitialArgument(Long caseId, ArgumentInitialRequestDto requestDto, User user) {
+        Case aCase = findCaseById(caseId);
+
+        // 1. 상태 및 모드 검증
+        if (aCase.getMode() != CaseMode.PARTY) {
+            throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "VS 모드 사건이 아닙니다.");
+        }
+        if (aCase.getStatus() != CaseStatus.PENDING) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "이미 재판이 시작된 사건입니다.");
+        }
+
+        // 2. 이미 참여했는지 (입장문 냈는지) 확인
+        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+        boolean alreadySubmitted = arguments.stream().anyMatch(arg -> arg.getUser().getId().equals(user.getId()));
+        if (alreadySubmitted) {
+            throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "이미 이 사건에 입장문을 제출했습니다.");
+        }
+
+        DebateSide assignedSide;
+        if (arguments.isEmpty()) {
+            // 3. 내가 첫 번째 제출자 -> A측 할당
+            assignedSide = DebateSide.A;
+        } else if (arguments.size() == 1) {
+            // 4. 내가 두 번째 제출자 -> B측 할당
+            assignedSide = DebateSide.B;
+        } else {
+            // 5. 이미 2명이 꽉 참 (로직상 PENDING 상태이므로 발생하기 어려움)
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "사건이 이미 꽉 찼습니다.");
+        }
+
+        // 6. CaseParticipation 생성
+        caseParticipationRepository.save(CaseParticipation.builder().aCase(aCase).user(user).result(CaseResult.PENDING).build());
+
+        // 7. 입장문 생성
+        ArgumentInitial argument = ArgumentInitial.builder()
+                .aCase(aCase)
+                .user(user)
+                .type(assignedSide) // <-- 자동으로 할당된 A 또는 B
+                .mainArgument(requestDto.getMainArgument())
+                .reasoning(requestDto.getReasoning())
+                .build();
+        argumentInitialRepository.save(argument);
+
+        // 8. [중요] 1차 판결 트리거 (내가 B측(두 번째)일 경우)
+        if (assignedSide == DebateSide.B) {
+            ArgumentInitial firstArgument = arguments.get(0); // 기존 A측 입장문
+            List<ArgumentInitial> allArguments = List.of(firstArgument, argument);
+
+            // AI 1차 판결 요청
+            AiJudgmentDto aiResult = chatGptService.getAiJudgment(aCase, allArguments);
+
+            Judgment judgment = Judgment.builder()
+                    .aCase(aCase)
+                    .stage(JudgmentStage.INITIAL)
+                    .content(aiResult.getVerdict())
+                    .basedOn(aiResult.getConclusion())
+                    .ratioA(aiResult.getRatioA())
+                    .ratioB(aiResult.getRatioB())
+                    .build();
+            judgmentRepository.save(judgment);
+
+            // 사건 상태를 PENDING -> FIRST로 변경
+            aCase.updateStatus(CaseStatus.FIRST);
+            // caseRepository.save(aCase); // (더티 체킹으로 자동 저장)
+        }
+    }
+
 
     @Transactional(readOnly = true)
     public JudgmentResponseDto getJudgment(Long caseId, User user) {
@@ -133,7 +219,9 @@ public class CaseService {
         }
     }
 
-    // --- 공통 헬퍼 메서드 ---
+    @Transactional
+    public void startAppeal(Long caseId, AppealRequestDto requestDto, User user) { /* ... */ }
+
     private Case findCaseById(Long caseId) {
         return caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "사건을 찾을 수 없습니다."));
