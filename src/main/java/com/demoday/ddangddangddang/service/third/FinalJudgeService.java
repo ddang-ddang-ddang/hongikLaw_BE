@@ -91,7 +91,7 @@ public class FinalJudgeService {
         Judgment finalJudgment = Judgment.builder()
                 .aCase(foundCase)
                 .stage(JudgmentStage.FINAL)
-                .content(aiResult.getVerdict())   // AI가 생성한 판결문
+                .content(aiResult.getVerdict()+aiResult.getConclusion())   // AI가 생성한 판결문
                 .ratioA(aiResult.getRatioA())       // AI가 생성한 비율
                 .ratioB(aiResult.getRatioB())
                 .basedOn(basedOnJson) // "근거"로 JSON 문자열 저장
