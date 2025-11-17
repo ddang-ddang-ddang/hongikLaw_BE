@@ -165,9 +165,12 @@ public class DebateService {
         checkCaseStatusIsSecond(defense.getACase());
 
         Rebuttal parentRebuttal = null;
-        if (requestDto.getParentId() != null) {
+
+        // parentId가 0 또는 null이 아닐 때만 부모 찾도록 수정
+        if (requestDto.getParentId() != null && requestDto.getParentId() != 0L) {
             parentRebuttal = rebuttalRepository.findById(requestDto.getParentId())
                     .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "부모 반론을 찾을 수 없습니다."));
+
             if (!parentRebuttal.getDefense().getId().equals(defense.getId())) {
                 throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "잘못된 부모 반론 ID 입니다. 해당 변론에 속하지 않습니다.");
             }

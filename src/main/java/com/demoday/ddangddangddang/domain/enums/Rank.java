@@ -1,5 +1,8 @@
 package com.demoday.ddangddangddang.domain.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum Rank {
     PARTNER_LAWYER("파트너 변호사", 4000L),
     SENIOR_LAWYER("시니어 변호사", 3000L),
