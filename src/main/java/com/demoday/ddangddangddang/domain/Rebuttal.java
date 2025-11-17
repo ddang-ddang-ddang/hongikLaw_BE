@@ -48,6 +48,7 @@ public class Rebuttal extends BaseEntity {
     @Column(name = "likes_count", nullable = false)
     private Integer likesCount = 0;
 
+    @Builder.Default
     @Column(name = "is_adopted", nullable = false)
     private Boolean isAdopted = false; // 최종심 채택 여부
 
@@ -56,14 +57,13 @@ public class Rebuttal extends BaseEntity {
     private CaseResult caseResult = CaseResult.PENDING;
 
     @Builder
-    public Rebuttal(Defense defense, User user, DebateSide type, String content, Rebuttal parent, Boolean isAdopted) {
+    public Rebuttal(Defense defense, User user, DebateSide type, String content, Rebuttal parent) {
         this.defense = defense;
         this.parent = parent;
         this.user = user;
         this.type = type;
         this.content = content;
         this.likesCount = 0;
-        this.isAdopted = false;
     }
 
     public void markAsAdopted() {

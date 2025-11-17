@@ -29,6 +29,7 @@ public class Judgment extends BaseEntity {
     @Column(name = "stage", nullable = false, length = 50)
     private JudgmentStage stage; // 'INITIAL' 또는 'FINAL'
 
+    @Lob
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content; // 판결문 내용
 
