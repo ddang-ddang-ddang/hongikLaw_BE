@@ -1,6 +1,8 @@
 package com.demoday.ddangddangddang.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +36,11 @@ public class OpenAiConfig {
 
     @Bean
     public ObjectMapper objectMapper() {
-        // AI가 반환하는 JSON을 파싱하기 위한 ObjectMapper
-        return new ObjectMapper();
+        ObjectMapper mapper = new ObjectMapper();
+
+        // 3. Java 8의 시간 타입(LocalDateTime 등)을 처리하도록 모듈 등록
+        mapper.registerModule(new JavaTimeModule());
+
+        return mapper;
     }
 }
