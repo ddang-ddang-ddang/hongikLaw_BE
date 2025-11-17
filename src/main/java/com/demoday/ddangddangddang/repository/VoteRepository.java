@@ -6,6 +6,7 @@ import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,4 +19,6 @@ public interface VoteRepository extends JpaRepository<Vote,Long> {
     // A측 투표 수 계산
     long countByaCase_IdAndType(Long caseId, DebateSide type);
     // ------------------------------------
+
+    List<Vote> findByaCase_IdAndType(Long caseId, DebateSide type);
 }
