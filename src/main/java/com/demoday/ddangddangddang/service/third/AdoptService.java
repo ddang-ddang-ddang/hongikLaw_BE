@@ -163,6 +163,49 @@ public class AdoptService {
         return ApiResponse.onSuccess("success","최종심에 반영될 의견 채택 완료");
     }
 
+    //사용자가 채택하지 않은 경우 자동 채택
+    public ApiResponse<String> adoptAuto(Long userId, Long caseId){
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+
+        Case aCase = caseRepository.findById(caseId)
+                .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        //유저가 initial한 사건인지 확인
+        List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+
+        //하나라도 유저가 참여한 항목 반환
+        ArgumentInitial userInitialArgument = allInitialArguments.stream()
+                .filter(arg -> arg.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
+
+        ApiResponse<AdoptResponseDto> top5Response = getOpinionBest(userId, caseId);
+        List<AdoptableItemDto> top5Items = top5Response.getResult().getItems();
+
+        if (top5Items == null || top5Items.isEmpty()) {
+            return ApiResponse.onSuccess("success", "자동 채택할 항목이 없습니다.");
+        }
+
+        // 4. 가져온 5개 항목을 '채택' 상태로 변경 (createAdopt 로직과 유사)
+        for (AdoptableItemDto item : top5Items) {
+            if (item.getItemType() == ContentType.DEFENSE) {
+                Defense defense = defenseRepository.findById(item.getId())
+                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채택할 변론을 찾을 수 없습니다."));
+                defense.markAsAdopted();
+                defense.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
+
+            } else if (item.getItemType() == ContentType.REBUTTAL) {
+                Rebuttal rebuttal = rebuttalRepository.findById(item.getId())
+                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채 Z택할 반론을 찾을 수 없습니다."));
+                rebuttal.markAsAdopted();
+                rebuttal.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
+            }
+        }
+
+        return ApiResponse.onSuccess("success","상위 5개 항목이 자동으로 채택되었습니다.");
+    }
+
     //채택된 반론&변론 조회
     public ApiResponse<AdoptResponseDto> getAdopt(Long caseId){
         Case acase = caseRepository.findById(caseId)
@@ -171,40 +214,42 @@ public class AdoptService {
         List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId,Boolean.TRUE);
         List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
-        List<AdoptResponseDto.DefenseAdoptDto> defenseDtos = adoptedDefenses.stream()
-                .map(defense -> AdoptResponseDto.DefenseAdoptDto.builder()
-                        .caseId(defense.getACase().getId()) // Case 엔티티에서 ID 가져오기
-                        .userId(defense.getUser().getId()) // User 엔티티에서 ID 가져오기
-                        .defenseId(defense.getId())
-                        .debateSide(defense.getType())
-                        .content(defense.getContent())
-                        .likeCount(defense.getLikesCount())
-                        .build())
-                .toList();
+        Stream<AdoptableItemDto> defenseStream = adoptedDefenses.stream()
+                .map(d -> AdoptableItemDto.builder()
+                        .itemType(ContentType.DEFENSE)
+                        .id(d.getId())
+                        .caseId(d.getACase().getId())
+                        .userId(d.getUser().getId())
+                        .debateSide(d.getType())
+                        .content(d.getContent())
+                        .likeCount(d.getLikesCount())
+                        .build()
+                );
 
-        List<AdoptResponseDto.RebuttalAdoptDto> rebuttalDtos = adoptedRebuttals.stream()
-                .map(rebuttal -> {
-                    Rebuttal parent = rebuttal.getParent();
-                    Long parentId = (parent != null) ? parent.getId() : null;
-                    String parentContent = (parent != null) ? parent.getContent() : null;
-
-                    return AdoptResponseDto.RebuttalAdoptDto.builder()
-                            .caseId(rebuttal.getDefense().getACase().getId())
-                            .userId(rebuttal.getUser().getId())
-                            .defenseId(rebuttal.getDefense().getId())
-                            .rebuttalId(rebuttal.getId())
-                            .parentId(parentId)
-                            .parentContent(parentContent)
-                            .debateSide(rebuttal.getType())
-                            .content(rebuttal.getContent())
-                            .likeCount(rebuttal.getLikesCount())
+        Stream<AdoptableItemDto> rebuttalStream = adoptedRebuttals.stream()
+                .map(r -> {
+                    Rebuttal parent = r.getParent();
+                    return AdoptableItemDto.builder()
+                            .itemType(ContentType.REBUTTAL)
+                            .id(r.getId())
+                            .caseId(r.getDefense().getACase().getId())
+                            .userId(r.getUser().getId())
+                            .debateSide(r.getType())
+                            .content(r.getContent())
+                            .likeCount(r.getLikesCount())
+                            .defenseId(r.getDefense().getId())
+                            .parentId((parent != null) ? parent.getId() : null)
+                            .parentContent((parent != null) ? parent.getContent() : null)
                             .build();
-                })
+                });
+
+        // [수정] 정렬 로직 추가
+        List<AdoptableItemDto> adoptedItems = Stream.concat(defenseStream, rebuttalStream)
+                .sorted(Comparator.comparing(AdoptableItemDto::getLikeCount).reversed()) // 좋아요 순 정렬
                 .toList();
 
         AdoptResponseDto responseDto = AdoptResponseDto.builder()
-                .defenses(defenseDtos)
-                .rebuttals(rebuttalDtos)
+                .items(adoptedItems) // 'items' 필드에 통합 리스트를 담아 전달
                 .build();
 
         return ApiResponse.onSuccess("채택된 반론 및 변론 조회 완료",responseDto);
