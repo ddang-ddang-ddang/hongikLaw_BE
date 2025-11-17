@@ -1,5 +1,5 @@
 package com.demoday.ddangddangddang.domain.enums;
 
 public enum DebateSide {
-    A, B
+    A, B, DRAW
 }
