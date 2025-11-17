@@ -9,6 +9,7 @@ import com.demoday.ddangddangddang.domain.CaseParticipation; // [추가]
 import com.demoday.ddangddangddang.domain.enums.*;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.*;
+import com.demoday.ddangddangddang.dto.caseDto.party.CasePendingResponseDto;
 import com.demoday.ddangddangddang.dto.caseDto.second.AppealRequestDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -85,12 +87,30 @@ public class CaseService {
     }
 
     private CaseResponseDto createPartyCase(CaseRequestDto requestDto, User user) {
+        // VS 모드 생성 시, A측 입장문도 함께 생성합니다.
+        if (requestDto.getArgumentAMain() == null) {
+            throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "VS 모드는 A측 입장문이 필요합니다.");
+        }
+
         Case newCase = Case.builder()
                 .mode(CaseMode.PARTY)
                 .title(requestDto.getTitle())
                 .status(CaseStatus.PENDING)
                 .build();
         caseRepository.save(newCase);
+
+        // A측 입장문 저장
+        ArgumentInitial argumentA = ArgumentInitial.builder()
+                .aCase(newCase)
+                .user(user)
+                .type(DebateSide.A)
+                .mainArgument(requestDto.getArgumentAMain())
+                .reasoning(requestDto.getArgumentAReasoning())
+                .build();
+        argumentInitialRepository.save(argumentA);
+
+        // A측 참여 기록 저장
+        caseParticipationRepository.save(CaseParticipation.builder().aCase(newCase).user(user).result(CaseResult.PENDING).build());
 
         // VS 모드 사건 생성 시 +100 exp
         user.addExp(100L);
@@ -122,6 +142,7 @@ public class CaseService {
         DebateSide assignedSide;
         if (arguments.isEmpty()) {
             // 내가 첫 번째 제출자 -> A측 할당
+            // createPartyCase에서 A측이 이미 생성되므로 이 분기는 사실상 실행X
             assignedSide = DebateSide.A;
         } else if (arguments.size() == 1) {
             // 내가 두 번째 제출자 -> B측 할당
@@ -138,7 +159,7 @@ public class CaseService {
         ArgumentInitial argument = ArgumentInitial.builder()
                 .aCase(aCase)
                 .user(user)
-                .type(assignedSide) // <-- 자동으로 할당된 A 또는 B
+                .type(assignedSide) // <-- 자동으로 할당된 B
                 .mainArgument(requestDto.getMainArgument())
                 .reasoning(requestDto.getReasoning())
                 .build();
@@ -195,7 +216,7 @@ public class CaseService {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "해당 사건에 대한 조회 권한이 없습니다.");
         }
 
-        rankingService.addCaseScore(caseId, 1.0); // ⭐️ 조회수 증가 로직
+        rankingService.addCaseScore(caseId, 1.0); // 조회수 증가 로직
 
         return CaseDetailResponseDto.builder()
                 .aCase(aCase)
@@ -221,7 +242,35 @@ public class CaseService {
     }
 
     @Transactional
-    public void startAppeal(Long caseId, AppealRequestDto requestDto, User user) { /* ... */ }
+    public List<CasePendingResponseDto> getPendingCases() {
+        // 1. PENDING 상태인 사건 목록을 최신순으로 조회
+        List<Case> pendingCases = caseRepository.findAllByStatusOrderByCreatedAtDesc(CaseStatus.PENDING);
+
+        // 2. N+1 문제 방지를 위해 모든 PENDING 사건의 1차 입장문을 한 번에 조회
+        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseInOrderByTypeAsc(pendingCases);
+
+        // 3. Case ID 기준으로 A측 입장문(첫 번째)을 매핑
+        Map<Long, ArgumentInitial> argumentAMap = arguments.stream()
+                .filter(arg -> arg.getType() == DebateSide.A) // A측 입장문만 필터링
+                .collect(Collectors.toMap(
+                        arg -> arg.getACase().getId(), // Key: Case ID
+                        arg -> arg,                    // Value: ArgumentInitial 객체
+                        (existing, replacement) -> existing // 중복 시 기존 값 유지
+                ));
+
+        // 4. DTO로 변환하여 반환
+        return pendingCases.stream()
+                .map(aCase -> {
+                    ArgumentInitial argumentA = argumentAMap.get(aCase.getId());
+                    // A측 입장문이 없는 PENDING case는 논리적으로 없어야 하지만, 방어 코드
+                    if (argumentA == null) {
+                        return null;
+                    }
+                    return new CasePendingResponseDto(aCase, argumentA);
+                })
+                .filter(dto -> dto != null) // 혹시 모를 null 제거
+                .collect(Collectors.toList());
+    }
 
     private Case findCaseById(Long caseId) {
         return caseRepository.findById(caseId)
