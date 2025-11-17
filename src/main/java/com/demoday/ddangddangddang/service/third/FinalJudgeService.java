@@ -36,19 +36,33 @@ public class FinalJudgeService {
     private final CaseParticipationRepository caseParticipationRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
     private final VoteRepository voteRepository;
+    private final UserRepository userRepository;
 
     //판결문 저장
-    public ApiResponse<Long> createJudge(Long caseId, FinalJudgmentRequestDto voteDto) {
+    public ApiResponse<Long> createJudge(Long caseId, FinalJudgmentRequestDto voteDto, Long userId) {
 
         // 1. Case 엔티티 조회
         Case foundCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
+        User foundUser = userRepository.findById(userId)
+                .orElseThrow(()-> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+
+        //유저가 initial한 사건인지 확인
+        List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(foundCase);
+
+        //하나라도 유저가 참여한 항목 반환
+        ArgumentInitial userInitialArgument = allInitialArguments.stream()
+                .filter(arg -> arg.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
+
+
         // 2. [기존 로직] 채택된 변론/반론 조회 (AI 호출 및 basedOn JSON에 모두 사용)
         List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
         List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
-        // 3. ⭐️ ChatGPT 서비스 호출 (수정된 메서드 사용)
+        // 3. ChatGPT 서비스 호출 (수정된 메서드 사용)
         AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(
                 foundCase,
                 adoptedDefenses,  // <-- 조회한 '채택된' 변론 전달

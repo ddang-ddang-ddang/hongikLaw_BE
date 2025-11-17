@@ -41,6 +41,7 @@ public class AdoptResponseDto {
         private int likeCount;
     }
 
-    private List<DefenseAdoptDto> defenses;
-    private List<RebuttalAdoptDto> rebuttals;
+    //private List<DefenseAdoptDto> defenses;
+    //private List<RebuttalAdoptDto> rebuttals;
+    private List<AdoptableItemDto> items;
 }

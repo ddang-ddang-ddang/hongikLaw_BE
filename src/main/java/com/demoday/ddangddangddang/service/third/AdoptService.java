@@ -1,10 +1,12 @@
 package com.demoday.ddangddangddang.service.third;
 
 import com.demoday.ddangddangddang.domain.*;
+import com.demoday.ddangddangddang.domain.enums.ContentType;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.dto.home.UserDefenseRebuttalResponseDto;
 import com.demoday.ddangddangddang.dto.third.AdoptRequestDto;
 import com.demoday.ddangddangddang.dto.third.AdoptResponseDto;
+import com.demoday.ddangddangddang.dto.third.AdoptableItemDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
@@ -13,7 +15,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -43,47 +47,50 @@ public class AdoptService {
         //유저 진영 확인
         DebateSide type = userInitialArgument.getType();
 
-        List<Defense> defenses = defenseRepository.findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(caseId,type);
+        List<Defense> allDefenses = defenseRepository.findAllByaCase_IdAndType(caseId,type);
 
-        List<Rebuttal> rebuttals = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId,type);
+        List<Rebuttal> allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndType(caseId,type);
 
-        List<AdoptResponseDto.DefenseAdoptDto> defenseDtos = defenses.stream()
-                .map(defense -> {
+        Stream<AdoptableItemDto> defenseStream = allDefenses.stream()
+                .map(d -> AdoptableItemDto.builder()
+                        .itemType(ContentType.DEFENSE)
+                        .id(d.getId())
+                        .caseId(d.getACase().getId())
+                        .userId(d.getUser().getId())
+                        .debateSide(d.getType())
+                        .content(d.getContent())
+                        .likeCount(d.getLikesCount())
+                        // defenseId, parentId, parentContent는 null (자동)
+                        .build()
+                );
 
-                    return AdoptResponseDto.DefenseAdoptDto.builder()
-                        .caseId(defense.getACase().getId()) // Case 엔티티에서 ID 가져오기
-                        .userId(defense.getUser().getId()) // User 엔티티에서 ID 가져오기
-                        .defenseId(defense.getId())
-                        .debateSide(defense.getType())
-                        .content(defense.getContent())
-                        .likeCount(defense.getLikesCount())
-                        .build();})
-                .toList();
-
-        List<AdoptResponseDto.RebuttalAdoptDto> rebuttalDtos = rebuttals.stream()
-                .map(rebuttal -> {
-                    //수정된 부분: parent가 null일 수 있으므로 null 체크
-                    Rebuttal parent = rebuttal.getParent();
-                    Long parentId = (parent != null) ? parent.getId() : null;
-                    String parentContent = (parent != null) ? parent.getContent() : null;
-
-                    return AdoptResponseDto.RebuttalAdoptDto.builder()
-                            .caseId(rebuttal.getDefense().getACase().getId())
-                            .userId(rebuttal.getUser().getId())
-                            .defenseId(rebuttal.getDefense().getId())
-                            .rebuttalId(rebuttal.getId())
-                            .parentId(parentId)
-                            .parentContent(parentContent)
-                            .debateSide(rebuttal.getType())
-                            .content(rebuttal.getContent())
-                            .likeCount(rebuttal.getLikesCount())
+        Stream<AdoptableItemDto> rebuttalStream = allRebuttals.stream()
+                .map(r -> {
+                    Rebuttal parent = r.getParent();
+                    return AdoptableItemDto.builder()
+                            .itemType(ContentType.REBUTTAL)
+                            .id(r.getId())
+                            .caseId(r.getDefense().getACase().getId())
+                            .userId(r.getUser().getId())
+                            .debateSide(r.getType())
+                            .content(r.getContent())
+                            .likeCount(r.getLikesCount())
+                            // --- Rebuttal 전용 필드 ---
+                            .defenseId(r.getDefense().getId())
+                            .parentId((parent != null) ? parent.getId() : null)
+                            .parentContent((parent != null) ? parent.getContent() : null)
                             .build();
-                })
+                });
+
+        // 3. [변경] 두 스트림을 합치고(concat), 정렬(sorted)하고, 5개만(limit) 선택
+        List<AdoptableItemDto> top5Items = Stream.concat(defenseStream, rebuttalStream)
+                .sorted(Comparator.comparing(AdoptableItemDto::getLikeCount).reversed()) // 좋아요 순 정렬
+                .limit(5)
                 .toList();
 
+        // 4. [변경] 새로운 DTO 형식으로 응답 생성
         AdoptResponseDto responseDto = AdoptResponseDto.builder()
-                .defenses(defenseDtos)
-                .rebuttals(rebuttalDtos)
+                .items(top5Items) // 'items' 필드에 통합 리스트를 담아 전달
                 .build();
 
         return ApiResponse.onSuccess("좋아요 많은 반론 및 변론 조회 완료",responseDto);
