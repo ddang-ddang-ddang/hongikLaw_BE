@@ -43,6 +43,14 @@ public class AdoptController {
         return adoptService.createAdopt(userId,caseId,adoptRequestDto);
     }
 
+    @Operation(summary = "자동 채택", description = "사용자가 채택을 하지 않았을 경우")
+    @SecurityRequirement(name = "JWT TOKEN")
+    @PostMapping("/{caseId}/auto")
+    public ApiResponse<String> adoptAuto(@AuthenticationPrincipal UserDetailsImpl user, @PathVariable Long caseId){
+        Long userId = user.getUser().getId();
+        return adoptService.adoptAuto(userId,caseId);
+    }
+
     @Operation(summary = "채택된 변론/반론 조회", description = "어떤 변론/반론들이 채택되었는지 조회합니다.")
     @GetMapping("/{caseId}")
     public ApiResponse<AdoptResponseDto> getAdoptCase(@PathVariable Long caseId) {

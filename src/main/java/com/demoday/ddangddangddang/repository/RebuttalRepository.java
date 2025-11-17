@@ -44,4 +44,6 @@ public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> {
 
     //사건별 좋아요가 많은 변론 상위 10개
     List<Rebuttal> findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(Long caseId, DebateSide type);
+
+    List<Rebuttal> findAllByDefense_aCase_IdAndType(Long caseId, DebateSide type);
 }
