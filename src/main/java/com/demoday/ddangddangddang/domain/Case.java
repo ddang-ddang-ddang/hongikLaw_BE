@@ -39,7 +39,8 @@ public class Case extends BaseEntity {
     @OneToMany(mappedBy = "aCase", cascade = CascadeType.ALL)
     private List<CaseParticipation> participations = new ArrayList<>();
 
-    // --- [ appealDeadline 필드 삭제 ] ---
+    @Column(name = "appeal_deadline")
+    private LocalDateTime appealDeadline;
 
     @Builder
     public Case(CaseMode mode, String title, CaseStatus status) {
@@ -56,8 +57,9 @@ public class Case extends BaseEntity {
     }
 
     // --- [ startAppeal 메서드 수정: deadline 파라미터 제거 ] ---
-    public void startAppeal() {
-        this.status = CaseStatus.SECOND; // 상태를 2차 재판으로 변경
+    public void startAppeal(LocalDateTime deadline) {
+        this.status = CaseStatus.SECOND;
+        this.appealDeadline = deadline;
     }
 
     public void setThird() {

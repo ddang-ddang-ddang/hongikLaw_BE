@@ -4,6 +4,7 @@ import com.demoday.ddangddangddang.domain.*;
 import com.demoday.ddangddangddang.domain.enums.*;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.second.*;
+import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.event.UpdateJudgmentEvent;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
@@ -17,6 +18,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,10 +40,10 @@ public class DebateService {
     private final ChatGptService chatGptService2;
 
     /**
-     * 2차 재판 시작 (시간제한 없음)
+     * 2차 재판 시작
      */
     @Transactional
-    public void startAppeal(Long caseId, User user) {
+    public void startAppeal(Long caseId, AppealRequestDto requestDto, User user) {
         Case foundCase = findCaseById(caseId);
         // TODO: 본인 확인 로직
 
@@ -50,7 +52,7 @@ public class DebateService {
             throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "이미 2차 재판이 시작되었거나 종료된 사건입니다.");
         }
 
-        foundCase.startAppeal(); // 상태를 SECOND로 변경
+        foundCase.startAppeal(requestDto.getDeadline());
 
         // 2차 재판 시작 시, 1차 판결문 기반으로 '최종심' 판결문 생성 (이후 계속 업데이트됨)
         Judgment initialJudgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.INITIAL)
@@ -191,6 +193,8 @@ public class DebateService {
         Case aCase = findCaseById(caseId);
         checkCaseStatusIsSecond(aCase);
 
+        checkDeadline(aCase);
+
         Vote vote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId())
                 .map(existingVote -> {
                     existingVote.updateChoice(requestDto.getChoice());
@@ -269,6 +273,13 @@ public class DebateService {
     private void checkCaseStatusIsSecond(Case aCase) {
         if (aCase.getStatus() != CaseStatus.SECOND) {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "현재 2차 재판(변론/투표)이 진행 중인 사건이 아닙니다.");
+        }
+    }
+
+    // 투표 마감 시간 체크
+    private void checkDeadline(Case aCase) {
+        if (aCase.getAppealDeadline() != null && aCase.getAppealDeadline().isBefore(LocalDateTime.now())) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "투표가 마감되었습니다.");
         }
     }
 }
