@@ -19,7 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-@Tag(name = "Debate (2nd Trial) API", description = "2차 재판(토론, 투표) 관련 API - by 최우혁")
+@Tag(name = "Debate (2차 재판) API", description = "2차 재판(토론, 투표) 관련 API - by 최우혁")
 @SecurityRequirement(name = "JWT TOKEN")
 @RestController
 @RequestMapping("/api/v1")
