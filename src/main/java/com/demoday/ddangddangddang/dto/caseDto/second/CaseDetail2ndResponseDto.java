@@ -9,7 +9,6 @@ import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
 import lombok.Builder;
 import lombok.Getter;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +20,7 @@ import java.util.stream.Collectors;
 public class CaseDetail2ndResponseDto {
     private Long caseId;
     private String caseTitle;
+    private LocalDateTime deadline;
     private List<DefenseDto> defenses;
     private VoteDto userVote; // 내가 투표한 정보 (투표 안했으면 null)
     private JudgmentResponseDto currentJudgment; // [수정] 실시간 AI 판결 결과
@@ -115,6 +115,7 @@ public class CaseDetail2ndResponseDto {
         return CaseDetail2ndResponseDto.builder()
                 .caseId(aCase.getId())
                 .caseTitle(aCase.getTitle())
+                .deadline(aCase.getAppealDeadline())
                 .defenses(defenseDtos)
                 .userVote(userVote != null ? VoteDto.builder().choice(userVote.getType()).build() : null)
                 .currentJudgment(finalJudgment != null ? new JudgmentResponseDto(finalJudgment) : null) // [수정]

@@ -36,9 +36,10 @@ public class DebateController {
     @PatchMapping("/cases/{caseId}/appeal")
     public ResponseEntity<ApiResponse<Void>> startAppeal(
             @PathVariable Long caseId,
+            @Valid @RequestBody AppealRequestDto requestDto,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        debateService.startAppeal(caseId, userDetails.getUser());
+        debateService.startAppeal(caseId, requestDto, userDetails.getUser());
         return ResponseEntity.ok(ApiResponse.onSuccess("2차 재판이 성공적으로 시작되었습니다."));
     }
 
