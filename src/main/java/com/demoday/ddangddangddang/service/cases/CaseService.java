@@ -45,7 +45,6 @@ public class CaseService {
     private final CaseParticipationRepository caseParticipationRepository;
     private final RankingService rankingService;
 
-    // --- [ createCase 로직 수정 (SOLO/PARTY 분기) ] ---
     @Transactional
     public CaseResponseDto createCase(CaseRequestDto requestDto, User user) {
         if (requestDto.getMode().equals(CaseMode.SOLO)) {
@@ -93,16 +92,19 @@ public class CaseService {
                 .build();
         caseRepository.save(newCase);
 
+        // VS 모드 사건 생성 시 +100 exp
+        user.addExp(100L);
+
         return new CaseResponseDto(newCase.getId());
     }
 
 
-    // --- [ 2. (수정) VS모드 1차 입장문 제출 API 로직 (자동 할당) ] ---
+    // VS모드 1차 입장문 제출 API 로직 (자동 할당)
     @Transactional
     public void createInitialArgument(Long caseId, ArgumentInitialRequestDto requestDto, User user) {
         Case aCase = findCaseById(caseId);
 
-        // 1. 상태 및 모드 검증
+        // 상태 및 모드 검증
         if (aCase.getMode() != CaseMode.PARTY) {
             throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "VS 모드 사건이 아닙니다.");
         }
@@ -110,7 +112,7 @@ public class CaseService {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "이미 재판이 시작된 사건입니다.");
         }
 
-        // 2. 이미 참여했는지 (입장문 냈는지) 확인
+        // 이미 참여했는지 (입장문 냈는지) 확인
         List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
         boolean alreadySubmitted = arguments.stream().anyMatch(arg -> arg.getUser().getId().equals(user.getId()));
         if (alreadySubmitted) {
@@ -119,20 +121,20 @@ public class CaseService {
 
         DebateSide assignedSide;
         if (arguments.isEmpty()) {
-            // 3. 내가 첫 번째 제출자 -> A측 할당
+            // 내가 첫 번째 제출자 -> A측 할당
             assignedSide = DebateSide.A;
         } else if (arguments.size() == 1) {
-            // 4. 내가 두 번째 제출자 -> B측 할당
+            // 내가 두 번째 제출자 -> B측 할당
             assignedSide = DebateSide.B;
         } else {
-            // 5. 이미 2명이 꽉 참 (로직상 PENDING 상태이므로 발생하기 어려움)
+            // 이미 2명이 꽉 참 (로직상 PENDING 상태이므로 발생하기 어려움)
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "사건이 이미 꽉 찼습니다.");
         }
 
-        // 6. CaseParticipation 생성
+        // CaseParticipation 생성
         caseParticipationRepository.save(CaseParticipation.builder().aCase(aCase).user(user).result(CaseResult.PENDING).build());
 
-        // 7. 입장문 생성
+        // 입장문 생성
         ArgumentInitial argument = ArgumentInitial.builder()
                 .aCase(aCase)
                 .user(user)
@@ -142,7 +144,7 @@ public class CaseService {
                 .build();
         argumentInitialRepository.save(argument);
 
-        // 8. [중요] 1차 판결 트리거 (내가 B측(두 번째)일 경우)
+        // 판결 트리거 (내가 B측(두 번째)일 경우)
         if (assignedSide == DebateSide.B) {
             ArgumentInitial firstArgument = arguments.get(0); // 기존 A측 입장문
             List<ArgumentInitial> allArguments = List.of(firstArgument, argument);
@@ -162,7 +164,6 @@ public class CaseService {
 
             // 사건 상태를 PENDING -> FIRST로 변경
             aCase.updateStatus(CaseStatus.FIRST);
-            // caseRepository.save(aCase); // (더티 체킹으로 자동 저장)
         }
     }
 
