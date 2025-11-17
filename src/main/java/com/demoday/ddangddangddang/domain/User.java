@@ -4,12 +4,12 @@ import com.demoday.ddangddangddang.domain.enums.Rank;
 import com.demoday.ddangddangddang.dto.mypage.UserUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.demoday.ddangddangddang.domain.enums.Rank.a;
 
 @Entity
 @Table(name = "users")
@@ -26,7 +26,7 @@ public class User extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "user_rank", nullable = false)
-    private Rank rank = Rank.a;
+    private Rank rank;
 
     @Column(name = "nickname", nullable = false, unique = true, length = 255)
     private String nickname;
@@ -56,7 +56,7 @@ public class User extends BaseEntity {
 
     @Builder
     public User(Rank rank, String nickname, String email, String password, Long exp, Integer totalPoints, Integer winCnt, Integer loseCnt) {
-        this.rank = rank;
+        this.rank = (rank != null) ? rank : Rank.NEWBIE_BRAWLER;
         this.nickname = nickname;
         this.email = email;
         this.password = password;
@@ -69,7 +69,8 @@ public class User extends BaseEntity {
     // --- 비즈니스 로직 편의를 위한 메서드들 ---
     public void addExp(Long amount) {
         this.exp += amount;
-        // 경험치 증가 후 랭크업 로직이 있다면 여기서 호출
+        // 경치 증가 후 랭크업 로직
+        this.rank = Rank.getRankByExp(this.exp);
     }
 
     public void addPoints(Integer amount) {

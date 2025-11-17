@@ -2,11 +2,7 @@ package com.demoday.ddangddangddang.service.auth;
 
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.enums.Rank;
-import com.demoday.ddangddangddang.dto.auth.LoginRequestDto;
-import com.demoday.ddangddangddang.dto.auth.SignupRequestDto;
-import com.demoday.ddangddangddang.dto.auth.TokenRefreshRequestDto;
-import com.demoday.ddangddangddang.dto.auth.AccessTokenResponseDto;
-import com.demoday.ddangddangddang.dto.auth.LoginResponseDto;
+import com.demoday.ddangddangddang.dto.auth.*;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode; // GeneralErrorCode 임포트
 import com.demoday.ddangddangddang.global.exception.GeneralException; // GeneralException 임포트
 import com.demoday.ddangddangddang.global.jwt.JwtUtil;
@@ -50,7 +46,7 @@ public class AuthService {
         String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
 
         // 4. 기본 랭크 설정 (Enum 직접 사용)
-        Rank defaultRank = Rank.a;
+        Rank defaultRank = Rank.NEWBIE_BRAWLER;
 
         // 5. 유저 객체 생성 및 저장
         User user = User.builder()
@@ -84,7 +80,7 @@ public class AuthService {
         String accessToken = jwtUtil.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtUtil.createRefreshToken();
 
-        // --- [ 4. (수정) Refresh Token을 Redis에 저장 ] ---
+        // Refresh Token을 Redis에 저장
         // (Key: email, Value: refreshToken, Expiry: 7일)
         redisTemplate.opsForValue().set(
                 user.getEmail(),

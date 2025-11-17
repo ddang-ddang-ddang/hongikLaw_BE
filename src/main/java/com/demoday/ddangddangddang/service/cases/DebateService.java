@@ -147,6 +147,9 @@ public class DebateService {
                 .build();
         Defense savedDefense = defenseRepository.save(defense);
 
+        // 변론 작성 보상 (+50)
+        user.addExp(50L);
+
         rankingService.addCaseScore(caseId, 5.0);
         eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId));
         return savedDefense;
@@ -180,6 +183,9 @@ public class DebateService {
                 .build();
         Rebuttal savedRebuttal = rebuttalRepository.save(rebuttal);
 
+        // 반론 작성 보상 (+50)
+        user.addExp(50L);
+
         rankingService.addCaseScore(defense.getACase().getId(), 5.0);
         eventPublisher.publishEvent(new UpdateJudgmentEvent(defense.getACase().getId()));
         return savedRebuttal;
@@ -197,14 +203,19 @@ public class DebateService {
 
         Vote vote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId())
                 .map(existingVote -> {
+                    // 이미 투표했으면 경험치 추가 지급 안함 (입장 변경만)
                     existingVote.updateChoice(requestDto.getChoice());
                     return existingVote;
                 })
-                .orElseGet(() -> Vote.builder()
-                        .aCase(aCase)
-                        .user(user)
-                        .type(requestDto.getChoice())
-                        .build());
+                .orElseGet(() -> {
+                    // 첫 투표일 경우에만 경험치 지급
+                    user.addExp(10L); // 투표 보상 (+10)
+                    return Vote.builder()
+                            .aCase(aCase)
+                            .user(user)
+                            .type(requestDto.getChoice())
+                            .build();
+                });
         voteRepository.save(vote);
 
         rankingService.addCaseScore(caseId, 3.0);
