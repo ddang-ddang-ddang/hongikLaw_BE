@@ -29,7 +29,7 @@ public class Case extends BaseEntity {
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 50)
     @Enumerated(EnumType.STRING)
     private CaseStatus status;
 
