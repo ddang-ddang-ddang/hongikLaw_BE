@@ -15,10 +15,6 @@ import com.openai.models.chat.completions.ChatCompletionMessageParam;
 import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
 import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
 
-//import com.theokanning.openai.completion.chat.ChatCompletionChoice;
-//import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-//import com.theokanning.openai.completion.chat.ChatMessage;
-//import com.theokanning.openai.completion.chat.ChatMessageRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -135,7 +131,7 @@ public class ChatGptService {
         ArgumentInitial argB = arguments.stream().filter(a -> a.getType() == DebateSide.B).findFirst().orElseThrow();
 
         return String.format(
-                "다음은 사용자가 입력한 솔로 모드 밸런스 게임입니다. 현명한 판사가 되어 판결을 내려주세요. 50:50 판결은 최대한 지양해주세요" +
+                "다음은 사용자가 입력한 밸런스 게임입니다. 현명한 판사가 되어 판결을 내려주세요. 50:50 판결은 최대한 지양해주세요" +
                         "\n\n[주제]: %s" +
                         "\n\n[A측 입장]: %s" +
                         "\n[A측 근거]: %s" +
