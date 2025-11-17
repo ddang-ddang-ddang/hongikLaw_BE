@@ -48,19 +48,21 @@ public class AdoptService {
         List<Rebuttal> rebuttals = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId,type);
 
         List<AdoptResponseDto.DefenseAdoptDto> defenseDtos = defenses.stream()
-                .map(defense -> AdoptResponseDto.DefenseAdoptDto.builder()
+                .map(defense -> {
+
+                    return AdoptResponseDto.DefenseAdoptDto.builder()
                         .caseId(defense.getACase().getId()) // Case 엔티티에서 ID 가져오기
                         .userId(defense.getUser().getId()) // User 엔티티에서 ID 가져오기
                         .defenseId(defense.getId())
                         .debateSide(defense.getType())
                         .content(defense.getContent())
                         .likeCount(defense.getLikesCount())
-                        .build())
+                        .build();})
                 .toList();
 
         List<AdoptResponseDto.RebuttalAdoptDto> rebuttalDtos = rebuttals.stream()
                 .map(rebuttal -> {
-                    // ⭐️ 수정된 부분: parent가 null일 수 있으므로 null 체크
+                    //수정된 부분: parent가 null일 수 있으므로 null 체크
                     Rebuttal parent = rebuttal.getParent();
                     Long parentId = (parent != null) ? parent.getId() : null;
                     String parentContent = (parent != null) ? parent.getContent() : null;
@@ -135,6 +137,7 @@ public class AdoptService {
             // 1-2. 각 엔티티의 상태를 '채택'으로 변경
             for (Defense defense : defensesToAdopt) {
                 defense.markAsAdopted();
+                defense.getUser().updateExp(100L);
             }
         }
 
@@ -146,6 +149,7 @@ public class AdoptService {
 
             // 2-2. 각 엔티티의 상태를 '채택'으로 변경
             for (Rebuttal rebuttal : rebuttalsToAdopt) {
+                rebuttal.getUser().updateExp(100L);
                 rebuttal.markAsAdopted(); // (Rebuttal 엔티티에는 이미 존재)
             }
         }

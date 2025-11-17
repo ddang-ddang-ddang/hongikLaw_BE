@@ -46,7 +46,7 @@ public class LikeService {
         boolean isLiked;
 
         if (existingLike.isPresent()) {
-            // 👍 좋아요 취소
+            // 좋아요 취소
             likeRepository.delete(existingLike.get());
 
             if (contentType == ContentType.DEFENSE) {
@@ -66,7 +66,7 @@ public class LikeService {
             isLiked = false;
 
         } else {
-            // 💖 좋아요 추가
+            // 좋아요 추가
             Like newLike = Like.builder()
                     .user(user)
                     .contentId(contentId)
@@ -80,12 +80,14 @@ public class LikeService {
                 defense.incrementLikesCount();
                 caseIdToUpdate = defense.getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate,3.0);
+                defense.getUser().updateExp(5L);
             } else {
                 Rebuttal rebuttal = rebuttalRepository.findById(contentId)
                         .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "반론을 찾을 수 없습니다."));
                 rebuttal.incrementLikesCount();
                 caseIdToUpdate = rebuttal.getDefense().getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate,3.0);
+                rebuttal.getUser().updateExp(5L);
             }
 
             isLiked = true;
@@ -93,7 +95,6 @@ public class LikeService {
 
         // ⚙️ AI 판결 업데이트 이벤트 (비동기)
         eventPublisher.publishEvent(new UpdateJudgmentEvent(caseIdToUpdate));
-
         return isLiked;
     }
 }
