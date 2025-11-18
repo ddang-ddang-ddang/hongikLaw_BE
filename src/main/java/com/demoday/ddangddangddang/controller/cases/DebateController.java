@@ -2,6 +2,7 @@ package com.demoday.ddangddangddang.controller.cases;
 
 import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Rebuttal;
+import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
 import com.demoday.ddangddangddang.dto.caseDto.second.*;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.security.UserDetailsImpl;

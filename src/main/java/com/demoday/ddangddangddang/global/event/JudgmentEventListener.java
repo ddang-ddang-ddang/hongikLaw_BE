@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class JudgmentEventListener {
-
+/*
     // private final CaseService caseService; // ⭐️ (주의) 순환 참조 방지
     private final DebateService debateService; // ⭐️ 호출할 서비스 변경
 
@@ -20,4 +20,6 @@ public class JudgmentEventListener {
         // caseService.updateFinalJudgment(event.getCaseId()); // ⭐️ 변경 전
         debateService.updateFinalJudgment(event.getCaseId()); // ⭐️ 변경 후
     }
+
+ */
 }

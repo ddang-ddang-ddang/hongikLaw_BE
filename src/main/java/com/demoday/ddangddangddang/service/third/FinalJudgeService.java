@@ -2,6 +2,7 @@ package com.demoday.ddangddangddang.service.third;
 
 import com.demoday.ddangddangddang.domain.*;
 import com.demoday.ddangddangddang.domain.enums.CaseResult;
+import com.demoday.ddangddangddang.domain.enums.CaseStatus;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.domain.enums.JudgmentStage;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
@@ -9,6 +10,7 @@ import com.demoday.ddangddangddang.dto.third.AdoptResponseDto;
 import com.demoday.ddangddangddang.dto.third.FinalJudgmentRequestDto;
 import com.demoday.ddangddangddang.dto.third.JudgementBasisDto;
 import com.demoday.ddangddangddang.dto.third.JudgementDetailResponseDto;
+import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
@@ -16,13 +18,19 @@ import com.demoday.ddangddangddang.repository.*;
 import com.demoday.ddangddangddang.service.ChatGptService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -209,5 +217,97 @@ public class FinalJudgeService {
                 .build();
 
         return ApiResponse.onSuccess("판결문 및 채택 근거 조회 완료", responseDto);
+    }
+
+    /**
+     * [비동기] 스케줄러가 호출하는 '일일 판결 스냅샷 생성'
+     * (A/B 진영별 Top 5가 변경되었을 때만 생성)
+     */
+    @Async
+    @Transactional
+    public void createDailyJudgmentSnapshot(Long caseId) {
+        log.info("Checking daily judgment snapshot for caseId: {}", caseId);
+        Case aCase = caseRepository.findById(caseId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        // 1. [✅ 변경] 최종심(THIRD) 상태가 아니면 중지
+        if (aCase.getStatus() != CaseStatus.THIRD) {
+            log.warn("Case {} is not in THIRD status. Skipping snapshot.", caseId);
+            return;
+        }
+
+        // --- 2. A/B 진영별 '좋아요 Top 5' 항목 조회 ---
+        List<Defense> topDefensesA = defenseRepository.findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.A);
+        List<Rebuttal> topRebuttalsA = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.A);
+        List<Defense> topDefensesB = defenseRepository.findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.B);
+        List<Rebuttal> topRebuttalsB = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.B);
+
+        List<Defense> allTopDefenses = Stream.concat(topDefensesA.stream(), topDefensesB.stream()).toList();
+        List<Rebuttal> allTopRebuttals = Stream.concat(topRebuttalsA.stream(), topRebuttalsB.stream()).toList();
+
+        List<Long> topDefenseIds = allTopDefenses.stream().map(Defense::getId).toList();
+        List<Long> topRebuttalIds = allTopRebuttals.stream().map(Rebuttal::getId).toList();
+
+        JudgementBasisDto currentBasisDto = new JudgementBasisDto(topDefenseIds, topRebuttalIds);
+        String currentBasisJson;
+        try {
+            currentBasisJson = objectMapper.writeValueAsString(currentBasisDto);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize current basis for caseId: {}", caseId, e);
+            throw new RuntimeException("Failed to serialize current basis", e);
+        }
+
+        // --- 3. 가장 최근 판결의 '기준'과 '현재 기준' 비교 ---
+        Optional<Judgment> latestJudgmentOpt = judgmentRepository.findTopByaCase_IdAndStageOrderByCreatedAtDesc(caseId, JudgmentStage.FINAL);
+
+        if (latestJudgmentOpt.isPresent()) {
+            String lastBasisJson = latestJudgmentOpt.get().getBasedOn();
+            if (currentBasisJson.equals(lastBasisJson)) {
+                log.info("Top 5 items (per side) unchanged for case {}. Skipping snapshot.", caseId);
+                return; // 변경 내역 없음
+            }
+        }
+
+        // --- 4. AI 판결 요청 및 새 스냅샷 저장 ---
+        log.info("Top 5 items (per side) changed for case {}. Creating new snapshot.", caseId);
+
+        long votesA = voteRepository.countByaCase_IdAndType(caseId, DebateSide.A);
+        long votesB = voteRepository.countByaCase_IdAndType(caseId, DebateSide.B);
+
+        AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(
+                aCase, allTopDefenses, allTopRebuttals, votesA, votesB
+        );
+
+        Judgment snapshotJudgment = Judgment.builder()
+                .aCase(aCase)
+                .stage(JudgmentStage.FINAL)
+                .content(aiResult.getVerdict() + aiResult.getConclusion())
+                .basedOn(currentBasisJson)
+                .ratioA(aiResult.getRatioA())
+                .ratioB(aiResult.getRatioB())
+                .build();
+
+        judgmentRepository.save(snapshotJudgment);
+        log.info("Finished daily judgment snapshot for caseId: {}", caseId);
+    }
+
+    /**
+     * 판결 히스토리 조회 (아카이브)
+     */
+    @Transactional(readOnly = true)
+    public ApiResponse<List<JudgmentResponseDto>> getJudgmentHistory(Long caseId) {
+        // 2. FINAL 스테이지의 모든 판결을 '오래된 순'으로 조회
+        List<Judgment> history = judgmentRepository.findAllByaCase_IdAndStageOrderByCreatedAtAsc(caseId, JudgmentStage.FINAL);
+
+        if (history.isEmpty()) {
+            return ApiResponse.onSuccess("아직 판결 히스토리가 없습니다.", Collections.emptyList());
+        }
+
+        // 3. JudgmentResponseDto 리스트로 변환
+        List<JudgmentResponseDto> historyDtos = history.stream()
+                .map(judgment -> new JudgmentResponseDto(judgment)) // DTO 재활용
+                .collect(Collectors.toList());
+
+        return ApiResponse.onSuccess("판결 히스토리 조회 완료", historyDtos);
     }
 }

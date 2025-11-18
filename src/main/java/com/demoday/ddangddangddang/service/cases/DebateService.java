@@ -5,12 +5,16 @@ import com.demoday.ddangddangddang.domain.enums.*;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.second.*;
 import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
+import com.demoday.ddangddangddang.dto.third.AdoptableItemDto;
+import com.demoday.ddangddangddang.dto.third.JudgementBasisDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.event.UpdateJudgmentEvent;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.repository.*;
 import com.demoday.ddangddangddang.service.ChatGptService;
 import com.demoday.ddangddangddang.service.ranking.RankingService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -18,11 +22,14 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -38,6 +45,7 @@ public class DebateService {
     private final ApplicationEventPublisher eventPublisher;
     private final RankingService rankingService;
     private final ChatGptService chatGptService2;
+    private final ObjectMapper objectMapper;
 
     /**
      * 2차 재판 시작
@@ -84,8 +92,8 @@ public class DebateService {
         List<Rebuttal> rebuttalList = rebuttalRepository.findAllByDefense_aCase_Id(caseId);
         Vote userVote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId()).orElse(null);
 
-        // 2차 재판(FINAL) 판결문 조회
-        Judgment finalJudgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.FINAL).orElse(null);
+        // 2차 재판(FINAL) 판결문 조회 (가장 최신 버전으로 수정)
+        Judgment finalJudgment = judgmentRepository.findTopByaCase_IdAndStageOrderByCreatedAtDesc(caseId, JudgmentStage.FINAL).orElse(null);
 
         // 사용자가 좋아요 누른 변론/반론 ID 목록 조회
         Set<Long> userLikedDefenseIds = likeRepository.findAllByUserAndContentType(user, ContentType.DEFENSE)
@@ -154,7 +162,7 @@ public class DebateService {
         user.addExp(50L);
 
         rankingService.addCaseScore(caseId, 5.0);
-        eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId));
+        // eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId)); // 실시간 ai 판결 업데이트 임시 주석
         return savedDefense;
     }
 
@@ -193,7 +201,7 @@ public class DebateService {
         user.addExp(50L);
 
         rankingService.addCaseScore(defense.getACase().getId(), 5.0);
-        eventPublisher.publishEvent(new UpdateJudgmentEvent(defense.getACase().getId()));
+        // eventPublisher.publishEvent(new UpdateJudgmentEvent(defense.getACase().getId())); // 실시간 ai 판결 업데이트 임시 주석
         return savedRebuttal;
     }
 
@@ -225,7 +233,7 @@ public class DebateService {
         voteRepository.save(vote);
 
         rankingService.addCaseScore(caseId, 3.0);
-        eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId));
+        // eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId)); // 실시간 ai 판결 업뎃 주석
     }
 
     /**
@@ -247,37 +255,6 @@ public class DebateService {
                 .aPercent(aPercent)
                 .bPercent(bPercent)
                 .build();
-    }
-
-    /**
-     * [비동기] 최종 AI 판결 업데이트 (이벤트 리스너가 호출)
-     */
-    @Async
-    @Transactional
-    public void updateFinalJudgment(Long caseId) {
-        log.info("Starting async judgment update for caseId: {}", caseId);
-        Case aCase = caseRepository.findById(caseId)
-                .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
-
-        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
-        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
-        long votesA = voteRepository.countByaCase_IdAndType(caseId, DebateSide.A);
-        long votesB = voteRepository.countByaCase_IdAndType(caseId, DebateSide.B);
-
-        AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(
-                aCase, adoptedDefenses, adoptedRebuttals, votesA, votesB
-        );
-
-        Judgment finalJudgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.FINAL)
-                .orElseThrow(() -> new GeneralException(GeneralErrorCode.INTERNAL_SERVER_ERROR, "2차 판결문이 생성되지 않았습니다."));
-
-        finalJudgment.updateJudgment(
-                aiResult.getVerdict(),
-                aiResult.getConclusion(),
-                aiResult.getRatioA(),
-                aiResult.getRatioB()
-        );
-        log.info("Finished async judgment update for caseId: {}", caseId);
     }
 
     // --- 공통 헬퍼 메서드 ---
