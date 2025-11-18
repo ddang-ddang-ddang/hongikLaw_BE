@@ -5,15 +5,19 @@ import com.demoday.ddangddangddang.dto.third.FinalJudgmentRequestDto;
 import com.demoday.ddangddangddang.dto.third.JudgementDetailResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.security.UserDetailsImpl;
+import com.demoday.ddangddangddang.global.sse.SseEmitters;
 import com.demoday.ddangddangddang.service.cases.DebateService;
 import com.demoday.ddangddangddang.service.third.FinalJudgeService;
+import com.demoday.ddangddangddang.service.third.JudgeFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -22,19 +26,36 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/final/judge")
 public class FinalJudgeController {
+    private final JudgeFacade judgeFacade;
     private final FinalJudgeService finalJudgeService;
-    private final DebateService debateService;
+    private final SseEmitters sseEmitters;
 
+    // 1. [SSE] 판결 완료 알림 구독 (클라이언트가 먼저 연결해야 함)
+    @GetMapping(value = "/subscribe/{caseId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter subscribe(@PathVariable Long caseId) {
+        return sseEmitters.add(caseId);
+    }
+
+    // 2. [POST] 판결 요청 (비동기 처리됨)
     @SecurityRequirement(name = "JWT TOKEN")
     @Operation(summary = "판결문 생성", description = "사건에 대한 최종판결문을 생성합니다")
     @PostMapping("/{caseId}")
-    public ApiResponse<Long> createFinalJudge(
+    public ApiResponse<String> requestJudge(
             @PathVariable Long caseId,
-            @RequestBody FinalJudgmentRequestDto voteDto, @AuthenticationPrincipal UserDetailsImpl user
-            ) {
+            @RequestBody FinalJudgmentRequestDto voteDto,
+            @AuthenticationPrincipal UserDetailsImpl user) {
         Long userId = user.getUser().getId();
-        return finalJudgeService.createJudge(caseId, voteDto, userId);
+        return judgeFacade.requestFinalJudge(caseId, voteDto, userId);
     }
+
+//    @PostMapping("/{caseId}")
+//    public ApiResponse<Long> createFinalJudge(
+//            @PathVariable Long caseId,
+//            @RequestBody FinalJudgmentRequestDto voteDto, @AuthenticationPrincipal UserDetailsImpl user
+//            ) {
+//        Long userId = user.getUser().getId();
+//        return finalJudgeService.createJudge(caseId, voteDto, userId);
+//    }
 
     @Operation(summary = "판결문 조회", description = "최종 판결문을 조회합니다")
     @GetMapping("/{caseId}")

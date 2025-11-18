@@ -1,15 +1,9 @@
 package com.demoday.ddangddangddang.service.third;
 
 import com.demoday.ddangddangddang.domain.*;
-import com.demoday.ddangddangddang.domain.enums.CaseResult;
-import com.demoday.ddangddangddang.domain.enums.CaseStatus;
-import com.demoday.ddangddangddang.domain.enums.DebateSide;
-import com.demoday.ddangddangddang.domain.enums.JudgmentStage;
+import com.demoday.ddangddangddang.domain.enums.*;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
-import com.demoday.ddangddangddang.dto.third.AdoptResponseDto;
-import com.demoday.ddangddangddang.dto.third.FinalJudgmentRequestDto;
-import com.demoday.ddangddangddang.dto.third.JudgementBasisDto;
-import com.demoday.ddangddangddang.dto.third.JudgementDetailResponseDto;
+import com.demoday.ddangddangddang.dto.third.*;
 import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
@@ -25,6 +19,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -46,46 +41,47 @@ public class FinalJudgeService {
     private final VoteRepository voteRepository;
     private final UserRepository userRepository;
 
-    //판결문 저장
-    public ApiResponse<Long> createJudge(Long caseId, FinalJudgmentRequestDto voteDto, Long userId) {
-
-        // 1. Case 엔티티 조회
+    /**
+     * 1. [ReadOnly Transaction] 판결에 필요한 데이터를 미리 조회
+     */
+    @Transactional(readOnly = true)
+    public JudgeContextDto prepareJudgeContext(Long caseId, Long userId) {
         Case foundCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
         User foundUser = userRepository.findById(userId)
-                .orElseThrow(()-> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
 
-        //유저가 initial한 사건인지 확인
+        // 유저가 initial한 사건인지 확인
         List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(foundCase);
 
-        //하나라도 유저가 참여한 항목 반환
-        ArgumentInitial userInitialArgument = allInitialArguments.stream()
-                .filter(arg -> arg.getUser().getId().equals(userId))
-                .findFirst()
-                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
+        boolean isParticipant = allInitialArguments.stream()
+                .anyMatch(arg -> arg.getUser().getId().equals(userId));
 
+        if (!isParticipant) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE);
+        }
 
-        // 2. [기존 로직] 채택된 변론/반론 조회 (AI 호출 및 basedOn JSON에 모두 사용)
         List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
         List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
-        // 3. ChatGPT 서비스 호출 (수정된 메서드 사용)
-        AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(
-                foundCase,
-                adoptedDefenses,  // <-- 조회한 '채택된' 변론 전달
-                adoptedRebuttals, // <-- 조회한 '채택된' 반론 전달
-                voteDto.getVotesA(),
-                voteDto.getVotesB()
-        );
+        return new JudgeContextDto(foundCase, adoptedDefenses, adoptedRebuttals);
+    }
 
-        // 4. [기존 로직] 'basedOn'에 사용할 ID 목록 JSON 생성
-        List<Long> adoptedDefenseIds = adoptedDefenses.stream()
-                .map(Defense::getId)
-                .toList();
-        List<Long> adoptedRebuttalIds = adoptedRebuttals.stream()
-                .map(Rebuttal::getId)
-                .toList();
+    /**
+     * 2. [Write Transaction] AI 결과를 DB에 저장하고 승패 정산
+     */
+    @Transactional
+    public Long saveJudgeResultAndSettle(Long caseId, AiJudgmentDto aiResult) {
+        Case foundCase = caseRepository.findById(caseId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        // adopted items 다시 조회 (영속성 컨텍스트 관리 위해)
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
+        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+
+        List<Long> adoptedDefenseIds = adoptedDefenses.stream().map(Defense::getId).toList();
+        List<Long> adoptedRebuttalIds = adoptedRebuttals.stream().map(Rebuttal::getId).toList();
 
         JudgementBasisDto basisDto = new JudgementBasisDto(adoptedDefenseIds, adoptedRebuttalIds);
         String basedOnJson;
@@ -95,67 +91,83 @@ public class FinalJudgeService {
             throw new RuntimeException("Failed to serialize judgment basis", e);
         }
 
-        // 5. Judgment 엔티티 생성 (AI 결과 사용)
         Judgment finalJudgment = Judgment.builder()
                 .aCase(foundCase)
                 .stage(JudgmentStage.FINAL)
-                .content(aiResult.getVerdict()+aiResult.getConclusion())   // AI가 생성한 판결문
-                .ratioA(aiResult.getRatioA())       // AI가 생성한 비율
+                .content(aiResult.getVerdict() + aiResult.getConclusion())
+                .ratioA(aiResult.getRatioA())
                 .ratioB(aiResult.getRatioB())
-                .basedOn(basedOnJson) // "근거"로 JSON 문자열 저장
+                .basedOn(basedOnJson)
                 .build();
 
         judgmentRepository.save(finalJudgment);
 
         DebateSide winSide = DebateSide.DRAW;
-        if(finalJudgment.getRatioA()>finalJudgment.getRatioB()) {winSide = DebateSide.A;}
-        else if (finalJudgment.getRatioA()<finalJudgment.getRatioB()){
+        if (finalJudgment.getRatioA() > finalJudgment.getRatioB()) {
+            winSide = DebateSide.A;
+        } else if (finalJudgment.getRatioA() < finalJudgment.getRatioB()) {
             winSide = DebateSide.B;
         }
 
-        //사건-유저 승패 결과 기록
+        // 정산 로직 (N+1 최적화 없이 유지)
+        settleResults(foundCase, winSide, adoptedDefenses, adoptedRebuttals);
+
+        return finalJudgment.getId();
+    }
+
+    private void settleResults(Case foundCase, DebateSide winSide, List<Defense> adoptedDefenses, List<Rebuttal> adoptedRebuttals) {
+        // 사건-유저 승패 결과 기록
         List<CaseParticipation> caseParticipations = caseParticipationRepository.findByaCase(foundCase);
         for (CaseParticipation caseParticipation : caseParticipations) {
             User user = caseParticipation.getUser();
-            List<ArgumentInitial> argumentInitials = argumentInitialRepository.findByaCaseAndUser(foundCase,user);
-            if(argumentInitials.size() > 1) {caseParticipation.updateResult(CaseResult.SOLO); break;}
-            for(ArgumentInitial argumentInitial : argumentInitials) {
-                if(argumentInitial.getType()== winSide) {caseParticipation.updateResult(CaseResult.WIN); caseParticipation.getUser().updateExp(150L);}
-                else if (winSide == DebateSide.DRAW) {
+            List<ArgumentInitial> argumentInitials = argumentInitialRepository.findByaCaseAndUser(foundCase, user);
+
+            if (argumentInitials.size() > 1) {
+                caseParticipation.updateResult(CaseResult.SOLO);
+                continue;
+            }
+            for (ArgumentInitial argumentInitial : argumentInitials) {
+                if (argumentInitial.getType() == winSide) {
+                    caseParticipation.updateResult(CaseResult.WIN);
+                    caseParticipation.getUser().updateExp(150L);
+                } else if (winSide == DebateSide.DRAW) {
                     caseParticipation.updateResult(CaseResult.DRAW);
+                } else {
+                    caseParticipation.updateResult(CaseResult.LOSE);
                 }
-                else caseParticipation.updateResult(CaseResult.LOSE);
             }
         }
 
-        //변론 유저 승패 결과 기록
-        for (Defense adoptDefense : adoptedDefenses ) {
-            if(adoptDefense.getType() == winSide){
+        // 변론 유저 승패 결과 기록
+        for (Defense adoptDefense : adoptedDefenses) {
+            if (adoptDefense.getType() == winSide) {
                 adoptDefense.updateResult(CaseResult.WIN);
                 adoptDefense.getUser().updateExp(150L);
-            }
-            else if (winSide == DebateSide.DRAW){
+            } else if (winSide == DebateSide.DRAW) {
                 adoptDefense.updateResult(CaseResult.DRAW);
+            } else {
+                adoptDefense.updateResult(CaseResult.LOSE);
             }
-            else adoptDefense.updateResult(CaseResult.LOSE);
         }
 
-        for(Rebuttal adoptedRebuttal : adoptedRebuttals){
-            if(adoptedRebuttal.getType() == winSide) {adoptedRebuttal.updateResult(CaseResult.WIN);
-            adoptedRebuttal.getUser().updateExp(150L);}
-            else if (winSide == DebateSide.DRAW){adoptedRebuttal.updateResult(CaseResult.DRAW);}
-            else adoptedRebuttal.updateResult(CaseResult.LOSE);
+        for (Rebuttal adoptedRebuttal : adoptedRebuttals) {
+            if (adoptedRebuttal.getType() == winSide) {
+                adoptedRebuttal.updateResult(CaseResult.WIN);
+                adoptedRebuttal.getUser().updateExp(150L);
+            } else if (winSide == DebateSide.DRAW) {
+                adoptedRebuttal.updateResult(CaseResult.DRAW);
+            } else {
+                adoptedRebuttal.updateResult(CaseResult.LOSE);
+            }
         }
 
-        //투표 유저 경험치 증가
-        if(winSide != DebateSide.DRAW){
+        // 투표 유저 경험치 증가
+        if (winSide != DebateSide.DRAW) {
             List<Vote> winVotes = voteRepository.findByaCase_IdAndType(foundCase.getId(), winSide);
             for (Vote winVote : winVotes) {
                 winVote.getUser().updateExp(20L);
             }
         }
-
-        return ApiResponse.onSuccess("성공적으로 판결이 저장되었습니다.", finalJudgment.getId());
     }
 
     //판결문 조회
@@ -230,25 +242,138 @@ public class FinalJudgeService {
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        // 1. [✅ 변경] 최종심(THIRD) 상태가 아니면 중지
+        // 1. [변경] 최종심(THIRD) 상태가 아니면 중지
         if (aCase.getStatus() != CaseStatus.THIRD) {
             log.warn("Case {} is not in THIRD status. Skipping snapshot.", caseId);
             return;
         }
 
         // --- 2. A/B 진영별 '좋아요 Top 5' 항목 조회 ---
-        List<Defense> topDefensesA = defenseRepository.findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.A);
-        List<Rebuttal> topRebuttalsA = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.A);
-        List<Defense> topDefensesB = defenseRepository.findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.B);
-        List<Rebuttal> topRebuttalsB = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.B);
+//        List<Defense> topDefensesA = defenseRepository.findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.A);
+//        List<Rebuttal> topRebuttalsA = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.A);
+//        List<Defense> topDefensesB = defenseRepository.findTop5ByaCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.B);
+//        List<Rebuttal> topRebuttalsB = rebuttalRepository.findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(caseId, DebateSide.B);
+//
+//        List<Defense> allTopDefenses = Stream.concat(topDefensesA.stream(), topDefensesB.stream()).toList();
+//        List<Rebuttal> allTopRebuttals = Stream.concat(topRebuttalsA.stream(), topRebuttalsB.stream()).toList();
 
-        List<Defense> allTopDefenses = Stream.concat(topDefensesA.stream(), topDefensesB.stream()).toList();
-        List<Rebuttal> allTopRebuttals = Stream.concat(topRebuttalsA.stream(), topRebuttalsB.stream()).toList();
+        List<Defense> allDefensesA = defenseRepository.findAllByaCase_IdAndType(caseId,DebateSide.A);
+        List<Rebuttal> allRebuttalsA = rebuttalRepository.findAllByDefense_aCase_IdAndType(caseId,DebateSide.A);
+        List<Defense> allDefensesB = defenseRepository.findAllByaCase_IdAndType(caseId,DebateSide.B);
+        List<Rebuttal> allRebuttalsB = rebuttalRepository.findAllByDefense_aCase_IdAndType(caseId,DebateSide.B);
 
-        List<Long> topDefenseIds = allTopDefenses.stream().map(Defense::getId).toList();
-        List<Long> topRebuttalIds = allTopRebuttals.stream().map(Rebuttal::getId).toList();
+        Stream<AdoptableItemDto> defenseStreamA = allDefensesA.stream()
+                .map(d ->{
+                    d.markAsAdoptedFalse();
+                    return AdoptableItemDto.builder()
+                        .itemType(ContentType.DEFENSE)
+                        .id(d.getId())
+                        .caseId(d.getACase().getId())
+                        .userId(d.getUser().getId())
+                        .debateSide(d.getType())
+                        .content(d.getContent())
+                        .likeCount(d.getLikesCount())
+                        // defenseId, parentId, parentContent는 null (자동)
+                        .build();}
+                );
 
-        JudgementBasisDto currentBasisDto = new JudgementBasisDto(topDefenseIds, topRebuttalIds);
+        Stream<AdoptableItemDto> defenseStreamB = allDefensesB.stream()
+                .map(d -> {
+                    d.markAsAdoptedFalse();
+                    return AdoptableItemDto.builder()
+                        .itemType(ContentType.DEFENSE)
+                        .id(d.getId())
+                        .caseId(d.getACase().getId())
+                        .userId(d.getUser().getId())
+                        .debateSide(d.getType())
+                        .content(d.getContent())
+                        .likeCount(d.getLikesCount())
+                        // defenseId, parentId, parentContent는 null (자동)
+                        .build();}
+                );
+
+        Stream<AdoptableItemDto> rebuttalStreamA = allRebuttalsA.stream()
+                .map(r -> {
+                    Rebuttal parent = r.getParent(); r.markAsAdoptedFalse();
+                    return AdoptableItemDto.builder()
+                            .itemType(ContentType.REBUTTAL)
+                            .id(r.getId())
+                            .caseId(r.getDefense().getACase().getId())
+                            .userId(r.getUser().getId())
+                            .debateSide(r.getType())
+                            .content(r.getContent())
+                            .likeCount(r.getLikesCount())
+                            // --- Rebuttal 전용 필드 ---
+                            .defenseId(r.getDefense().getId())
+                            .parentId((parent != null) ? parent.getId() : null)
+                            .parentContent((parent != null) ? parent.getContent() : null)
+                            .build();
+                });
+
+        Stream<AdoptableItemDto> rebuttalStreamB = allRebuttalsB.stream()
+                .map(r -> {
+                    Rebuttal parent = r.getParent(); r.markAsAdoptedFalse();
+                    return AdoptableItemDto.builder()
+                            .itemType(ContentType.REBUTTAL)
+                            .id(r.getId())
+                            .caseId(r.getDefense().getACase().getId())
+                            .userId(r.getUser().getId())
+                            .debateSide(r.getType())
+                            .content(r.getContent())
+                            .likeCount(r.getLikesCount())
+                            // --- Rebuttal 전용 필드 ---
+                            .defenseId(r.getDefense().getId())
+                            .parentId((parent != null) ? parent.getId() : null)
+                            .parentContent((parent != null) ? parent.getContent() : null)
+                            .build();
+                });
+
+        // 3. [변경] 두 스트림을 합치고(concat), 정렬(sorted)하고, 5개만(limit) 선택
+        List<AdoptableItemDto> top5ItemsA = Stream.concat(defenseStreamA, rebuttalStreamA)
+                .sorted(Comparator.comparing(AdoptableItemDto::getLikeCount).reversed()) // 좋아요 순 정렬
+                .limit(5)
+                .toList();
+
+        List<AdoptableItemDto> top5ItemsB = Stream.concat(defenseStreamB, rebuttalStreamB)
+                .sorted(Comparator.comparing(AdoptableItemDto::getLikeCount).reversed()) // 좋아요 순 정렬
+                .limit(5)
+                .toList();
+
+        List<Long> topItemIdsA = top5ItemsA.stream().map(AdoptableItemDto::getId).toList();
+        List<Long> topItemIdsB = top5ItemsB.stream().map(AdoptableItemDto::getId).toList();
+
+        JudgementBasisDto currentBasisDto = new JudgementBasisDto(topItemIdsA, topItemIdsB);
+
+        for (AdoptableItemDto item : top5ItemsA) {
+            if (item.getItemType() == ContentType.DEFENSE) {
+                Defense defense = defenseRepository.findById(item.getId())
+                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채택할 변론을 찾을 수 없습니다."));
+                defense.markAsAdopted();
+                //defense.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
+
+            } else if (item.getItemType() == ContentType.REBUTTAL) {
+                Rebuttal rebuttal = rebuttalRepository.findById(item.getId())
+                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채 채택할 반론을 찾을 수 없습니다."));
+                rebuttal.markAsAdopted();
+                //rebuttal.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
+            }
+        }
+
+        for (AdoptableItemDto item : top5ItemsB) {
+            if (item.getItemType() == ContentType.DEFENSE) {
+                Defense defense = defenseRepository.findById(item.getId())
+                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채택할 변론을 찾을 수 없습니다."));
+                defense.markAsAdopted();
+                //defense.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
+
+            } else if (item.getItemType() == ContentType.REBUTTAL) {
+                Rebuttal rebuttal = rebuttalRepository.findById(item.getId())
+                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채 채택할 반론을 찾을 수 없습니다."));
+                rebuttal.markAsAdopted();
+                //rebuttal.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
+            }
+        }
+
         String currentBasisJson;
         try {
             currentBasisJson = objectMapper.writeValueAsString(currentBasisDto);
@@ -274,8 +399,11 @@ public class FinalJudgeService {
         long votesA = voteRepository.countByaCase_IdAndType(caseId, DebateSide.A);
         long votesB = voteRepository.countByaCase_IdAndType(caseId, DebateSide.B);
 
+        List<Defense> topDefense = defenseRepository.findByaCase_IdAndIsAdopted(caseId,true);
+        List<Rebuttal> topRebuttal = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+
         AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(
-                aCase, allTopDefenses, allTopRebuttals, votesA, votesB
+                aCase, topDefense, topRebuttal, votesA, votesB
         );
 
         Judgment snapshotJudgment = Judgment.builder()

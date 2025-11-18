@@ -197,7 +197,7 @@ public class AdoptService {
 
             } else if (item.getItemType() == ContentType.REBUTTAL) {
                 Rebuttal rebuttal = rebuttalRepository.findById(item.getId())
-                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채 Z택할 반론을 찾을 수 없습니다."));
+                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채 채택할 반론을 찾을 수 없습니다."));
                 rebuttal.markAsAdopted();
                 rebuttal.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
             }

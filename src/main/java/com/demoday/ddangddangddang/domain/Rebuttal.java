@@ -71,6 +71,8 @@ public class Rebuttal extends BaseEntity {
         this.isAdopted = true;
     }
 
+    public void markAsAdoptedFalse() { this.isAdopted = false; }
+
     public void incrementLikesCount() {
         this.likesCount++;
     }
