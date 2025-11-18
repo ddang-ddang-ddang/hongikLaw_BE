@@ -58,6 +58,8 @@ public class Defense extends BaseEntity {
 
     public void markAsAdopted() { this.isAdopted = true; }
 
+    public void markAsAdoptedFalse() { this.isAdopted = false; }
+
     public void incrementLikesCount() { this.likesCount++; }
 
     public void decrementLikesCount() {
