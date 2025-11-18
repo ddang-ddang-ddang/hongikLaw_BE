@@ -41,46 +41,47 @@ public class FinalJudgeService {
     private final VoteRepository voteRepository;
     private final UserRepository userRepository;
 
-    //판결문 저장
-    public ApiResponse<Long> createJudge(Long caseId, FinalJudgmentRequestDto voteDto, Long userId) {
-
-        // 1. Case 엔티티 조회
+    /**
+     * 1. [ReadOnly Transaction] 판결에 필요한 데이터를 미리 조회
+     */
+    @Transactional(readOnly = true)
+    public JudgeContextDto prepareJudgeContext(Long caseId, Long userId) {
         Case foundCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
         User foundUser = userRepository.findById(userId)
-                .orElseThrow(()-> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
 
-        //유저가 initial한 사건인지 확인
+        // 유저가 initial한 사건인지 확인
         List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(foundCase);
 
-        //하나라도 유저가 참여한 항목 반환
-        ArgumentInitial userInitialArgument = allInitialArguments.stream()
-                .filter(arg -> arg.getUser().getId().equals(userId))
-                .findFirst()
-                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
+        boolean isParticipant = allInitialArguments.stream()
+                .anyMatch(arg -> arg.getUser().getId().equals(userId));
 
+        if (!isParticipant) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE);
+        }
 
-        // 2. [기존 로직] 채택된 변론/반론 조회 (AI 호출 및 basedOn JSON에 모두 사용)
         List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
         List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
-        // 3. ChatGPT 서비스 호출 (수정된 메서드 사용)
-        AiJudgmentDto aiResult = chatGptService2.requestFinalJudgment(
-                foundCase,
-                adoptedDefenses,  // <-- 조회한 '채택된' 변론 전달
-                adoptedRebuttals, // <-- 조회한 '채택된' 반론 전달
-                voteDto.getVotesA(),
-                voteDto.getVotesB()
-        );
+        return new JudgeContextDto(foundCase, adoptedDefenses, adoptedRebuttals);
+    }
 
-        // 4. [기존 로직] 'basedOn'에 사용할 ID 목록 JSON 생성
-        List<Long> adoptedDefenseIds = adoptedDefenses.stream()
-                .map(Defense::getId)
-                .toList();
-        List<Long> adoptedRebuttalIds = adoptedRebuttals.stream()
-                .map(Rebuttal::getId)
-                .toList();
+    /**
+     * 2. [Write Transaction] AI 결과를 DB에 저장하고 승패 정산
+     */
+    @Transactional
+    public Long saveJudgeResultAndSettle(Long caseId, AiJudgmentDto aiResult) {
+        Case foundCase = caseRepository.findById(caseId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+
+        // adopted items 다시 조회 (영속성 컨텍스트 관리 위해)
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
+        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+
+        List<Long> adoptedDefenseIds = adoptedDefenses.stream().map(Defense::getId).toList();
+        List<Long> adoptedRebuttalIds = adoptedRebuttals.stream().map(Rebuttal::getId).toList();
 
         JudgementBasisDto basisDto = new JudgementBasisDto(adoptedDefenseIds, adoptedRebuttalIds);
         String basedOnJson;
@@ -90,67 +91,83 @@ public class FinalJudgeService {
             throw new RuntimeException("Failed to serialize judgment basis", e);
         }
 
-        // 5. Judgment 엔티티 생성 (AI 결과 사용)
         Judgment finalJudgment = Judgment.builder()
                 .aCase(foundCase)
                 .stage(JudgmentStage.FINAL)
-                .content(aiResult.getVerdict()+aiResult.getConclusion())   // AI가 생성한 판결문
-                .ratioA(aiResult.getRatioA())       // AI가 생성한 비율
+                .content(aiResult.getVerdict() + aiResult.getConclusion())
+                .ratioA(aiResult.getRatioA())
                 .ratioB(aiResult.getRatioB())
-                .basedOn(basedOnJson) // "근거"로 JSON 문자열 저장
+                .basedOn(basedOnJson)
                 .build();
 
         judgmentRepository.save(finalJudgment);
 
         DebateSide winSide = DebateSide.DRAW;
-        if(finalJudgment.getRatioA()>finalJudgment.getRatioB()) {winSide = DebateSide.A;}
-        else if (finalJudgment.getRatioA()<finalJudgment.getRatioB()){
+        if (finalJudgment.getRatioA() > finalJudgment.getRatioB()) {
+            winSide = DebateSide.A;
+        } else if (finalJudgment.getRatioA() < finalJudgment.getRatioB()) {
             winSide = DebateSide.B;
         }
 
-        //사건-유저 승패 결과 기록
+        // 정산 로직 (N+1 최적화 없이 유지)
+        settleResults(foundCase, winSide, adoptedDefenses, adoptedRebuttals);
+
+        return finalJudgment.getId();
+    }
+
+    private void settleResults(Case foundCase, DebateSide winSide, List<Defense> adoptedDefenses, List<Rebuttal> adoptedRebuttals) {
+        // 사건-유저 승패 결과 기록
         List<CaseParticipation> caseParticipations = caseParticipationRepository.findByaCase(foundCase);
         for (CaseParticipation caseParticipation : caseParticipations) {
             User user = caseParticipation.getUser();
-            List<ArgumentInitial> argumentInitials = argumentInitialRepository.findByaCaseAndUser(foundCase,user);
-            if(argumentInitials.size() > 1) {caseParticipation.updateResult(CaseResult.SOLO); break;}
-            for(ArgumentInitial argumentInitial : argumentInitials) {
-                if(argumentInitial.getType()== winSide) {caseParticipation.updateResult(CaseResult.WIN); caseParticipation.getUser().updateExp(150L);}
-                else if (winSide == DebateSide.DRAW) {
+            List<ArgumentInitial> argumentInitials = argumentInitialRepository.findByaCaseAndUser(foundCase, user);
+
+            if (argumentInitials.size() > 1) {
+                caseParticipation.updateResult(CaseResult.SOLO);
+                continue;
+            }
+            for (ArgumentInitial argumentInitial : argumentInitials) {
+                if (argumentInitial.getType() == winSide) {
+                    caseParticipation.updateResult(CaseResult.WIN);
+                    caseParticipation.getUser().updateExp(150L);
+                } else if (winSide == DebateSide.DRAW) {
                     caseParticipation.updateResult(CaseResult.DRAW);
+                } else {
+                    caseParticipation.updateResult(CaseResult.LOSE);
                 }
-                else caseParticipation.updateResult(CaseResult.LOSE);
             }
         }
 
-        //변론 유저 승패 결과 기록
-        for (Defense adoptDefense : adoptedDefenses ) {
-            if(adoptDefense.getType() == winSide){
+        // 변론 유저 승패 결과 기록
+        for (Defense adoptDefense : adoptedDefenses) {
+            if (adoptDefense.getType() == winSide) {
                 adoptDefense.updateResult(CaseResult.WIN);
                 adoptDefense.getUser().updateExp(150L);
-            }
-            else if (winSide == DebateSide.DRAW){
+            } else if (winSide == DebateSide.DRAW) {
                 adoptDefense.updateResult(CaseResult.DRAW);
+            } else {
+                adoptDefense.updateResult(CaseResult.LOSE);
             }
-            else adoptDefense.updateResult(CaseResult.LOSE);
         }
 
-        for(Rebuttal adoptedRebuttal : adoptedRebuttals){
-            if(adoptedRebuttal.getType() == winSide) {adoptedRebuttal.updateResult(CaseResult.WIN);
-            adoptedRebuttal.getUser().updateExp(150L);}
-            else if (winSide == DebateSide.DRAW){adoptedRebuttal.updateResult(CaseResult.DRAW);}
-            else adoptedRebuttal.updateResult(CaseResult.LOSE);
+        for (Rebuttal adoptedRebuttal : adoptedRebuttals) {
+            if (adoptedRebuttal.getType() == winSide) {
+                adoptedRebuttal.updateResult(CaseResult.WIN);
+                adoptedRebuttal.getUser().updateExp(150L);
+            } else if (winSide == DebateSide.DRAW) {
+                adoptedRebuttal.updateResult(CaseResult.DRAW);
+            } else {
+                adoptedRebuttal.updateResult(CaseResult.LOSE);
+            }
         }
 
-        //투표 유저 경험치 증가
-        if(winSide != DebateSide.DRAW){
+        // 투표 유저 경험치 증가
+        if (winSide != DebateSide.DRAW) {
             List<Vote> winVotes = voteRepository.findByaCase_IdAndType(foundCase.getId(), winSide);
             for (Vote winVote : winVotes) {
                 winVote.getUser().updateExp(20L);
             }
         }
-
-        return ApiResponse.onSuccess("성공적으로 판결이 저장되었습니다.", finalJudgment.getId());
     }
 
     //판결문 조회
