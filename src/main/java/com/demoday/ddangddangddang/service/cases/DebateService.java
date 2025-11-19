@@ -10,6 +10,7 @@ import com.demoday.ddangddangddang.dto.third.JudgementBasisDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.event.UpdateJudgmentEvent;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
+import com.demoday.ddangddangddang.global.sse.SseEmitters;
 import com.demoday.ddangddangddang.repository.*;
 import com.demoday.ddangddangddang.service.ChatGptService;
 import com.demoday.ddangddangddang.service.ranking.RankingService;
@@ -46,6 +47,7 @@ public class DebateService {
     private final RankingService rankingService;
     private final ChatGptService chatGptService2;
     private final ObjectMapper objectMapper;
+    private final SseEmitters sseEmitters;
 
     /**
      * 2차 재판 시작
@@ -207,6 +209,24 @@ public class DebateService {
                 .caseResult(CaseResult.PENDING)
                 .build();
         Rebuttal savedRebuttal = rebuttalRepository.save(rebuttal);
+
+        // [알림 로직]
+        // 1. 대대댓글(답글의 답글)인 경우 -> 바로 위 부모 댓글 작성자에게 알림
+        if (parentRebuttal != null) {
+            Long targetUserId = parentRebuttal.getUser().getId();
+            // 본인이 본인 글에 단 경우는 알림 제외
+            if (!targetUserId.equals(user.getId())) {
+                sseEmitters.sendNotification(targetUserId, "notification", "내 반론에 새로운 대댓글이 달렸습니다.");
+            }
+        }
+        // 2. 일반 반론(댓글)인 경우 -> 변론(게시글) 작성자에게 알림
+        else {
+            Long targetUserId = defense.getUser().getId();
+            // 본인이 본인 변론에 댓글 단 경우 제외
+            if (!targetUserId.equals(user.getId())) {
+                sseEmitters.sendNotification(targetUserId, "notification", "내 변론에 새로운 반론이 달렸습니다.");
+            }
+        }
 
         // 반론 작성 보상 (+50)
         user.addExp(50L);
