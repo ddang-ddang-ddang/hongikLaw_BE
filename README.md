@@ -1,8 +1,9 @@
-# DDANG-DDANG-DDANG_BE
-# ⚖️ DdangDdangDdang (땅땅땅)
+# DdangDdangDdang (땅땅땅) SERVER
 
 > **"그 사건, AI 판사는 어떻게 생각할까?"** \> 사용자가 제기한 밸런스 게임 안건에 대해 **AI가 즉결 심판**을 내리고,  
 > 유저들이 변호사가 되어 **토론 및 투표**를 통해 최종 판결을 뒤집는 **AI 기반 법정 토론 플랫폼**입니다.
+> https://ddang-ddang-ddang-fe-8npo.vercel.app/
+> https://ddangx3.site/
 
 -----
 
@@ -152,7 +153,7 @@ GitHub Main 브랜치에 코드가 푸시되면, **GitHub Actions**가 자동으
 
 서버 실행 후 아래 주소에서 **Swagger UI**를 통해 API 명세를 확인하고 테스트할 수 있습니다.
 
-  * **Swagger URL**: `https://{SERVER_URL}/swagger-ui/index.html`
+  * **Swagger URL**: `https://ddangx3.site/swagger-ui/index.html`
       * *(로컬 환경: `http://localhost:8080/swagger-ui/index.html`)*
 
 -----
@@ -161,8 +162,5 @@ GitHub Main 브랜치에 코드가 푸시되면, **GitHub Actions**가 자동으
 
 | 이름 | 역할 | 담당 기능 |
 |---|---|---|
-| **황신애(@shinae1023)** | 백엔드 | **최종 판결(3차)** 로직, 의견 채택 및 자동 채택 스케줄러, 마이페이지, 좋아요 기능, 알림(SSE), 메인페이지, 배포 및 CI/CD 구현 |
-| **최우혁(@whc9999)** | 백엔드 | **인증(Auth)** 및 회원가입(이메일), **사건 생성(1차)** 및 VS 모드 매칭, **2차 재판** 변론/반론 및 투표 시스템, 신고 기능 구현 |
-
-| **황신애** | Backend | **최종심(3차)** 로직 설계, 의견 자동 채택 스케줄러, **마이페이지(업적/전적/랭킹)**, 좋아요/신고 및 **실시간 알림(SSE)** 구현 |
-| **최우혁** | Backend | **회원가입/인증(Auth)** 및 이메일 검증, **사건 생성(1차)** 및 VS 모드 매칭 시스템, **2차 재판(변론/투표)** CRUD 구현 |
+| **황신애[@shinae1023](https://github.com/shinae1023)** | 백엔드 | **최종 판결(3차)** 로직, 의견 채택 및 자동 채택 스케줄러, 마이페이지, 좋아요 기능, 알림(SSE), 메인페이지, 배포 및 CI/CD 구현 |
+| **최우혁[@whc9999](https://github.com/whc9999)** | 백엔드 | **인증(Auth)** 및 회원가입(이메일 인증), **사건 생성(1차)** 및 VS 모드 매칭, **2차 재판** 변론/반론 및 투표 시스템, 신고 기능 구현 |
