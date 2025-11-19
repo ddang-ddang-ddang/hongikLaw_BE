@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .requestMatchers("/", "/health-check").permitAll()
                 .requestMatchers("/*").permitAll() // HomeController의 "/" 경로 허용
                 .requestMatchers(HttpMethod.GET,"/api/v1/cases/pending").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/cases/second").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/cases/{caseId}","/api/v1/cases/{caseId}/defenses").permitAll()
                 .requestMatchers(HttpMethod.GET,"api/v1/defenses/{defenseId}/rebuttals").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/cases/{caseId}/vote/result").permitAll()
