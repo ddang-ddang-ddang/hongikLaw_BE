@@ -65,7 +65,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,"/api/v1/cases/pending").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/cases/second").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/cases/{caseId}","/api/v1/cases/{caseId}/defenses").permitAll()
-                .requestMatchers(HttpMethod.GET,"api/v1/defenses/{defenseId}/rebuttals").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/defenses/{defenseId}/rebuttals").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/cases/{caseId}/vote/result").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/cases/{caseId}/debate").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/final/judge/**").permitAll()
