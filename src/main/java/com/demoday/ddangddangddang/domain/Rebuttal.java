@@ -54,6 +54,10 @@ public class Rebuttal extends BaseEntity {
     private Boolean isAdopted = false; // 최종심 채택 여부
 
     @Builder.Default
+    @Column(name = "is_blind", nullable = false)
+    private Boolean isBlind = false;
+
+    @Builder.Default
     @Column(name = "case_result")
     private CaseResult caseResult = CaseResult.PENDING;
 
@@ -67,11 +71,11 @@ public class Rebuttal extends BaseEntity {
         this.likesCount = 0;
     }
 
-    public void markAsAdopted() {
-        this.isAdopted = true;
-    }
+    public void markAsAdopted() { this.isAdopted = true; }
 
     public void markAsAdoptedFalse() { this.isAdopted = false; }
+
+    public void markAsBlind() { this.isBlind = true; }
 
     public void incrementLikesCount() {
         this.likesCount++;
@@ -83,7 +87,6 @@ public class Rebuttal extends BaseEntity {
         }
     }
 
-    // 결과 업데이트 메서드
     public void updateResult(CaseResult result) {
         this.caseResult = result;
     }

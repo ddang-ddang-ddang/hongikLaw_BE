@@ -24,6 +24,7 @@ public class UserDefenseRebuttalResponseDto {
         private String content;
         private int likeCount;
         private CaseResult caseResult;
+        private Boolean isBlind;
     }
 
     @Getter
@@ -38,6 +39,7 @@ public class UserDefenseRebuttalResponseDto {
         private String content;
         private int likeCount;
         private CaseResult caseResult;
+        private Boolean isBlind;
     }
 
     private List<DefenseDto> defenses;

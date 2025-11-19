@@ -33,17 +33,18 @@ public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> {
     //채택된 변론
     List<Rebuttal> findByIsAdopted(Boolean isAdopted);
 
-    //사건별 채택된 변론
+    //사건별 채택된 반론
     @Query("SELECT r FROM Rebuttal r " +
-            "JOIN r.defense d " + // Rebuttal(r)과 Defense(d)를 조인
-            "WHERE d.aCase.id = :caseId AND r.isAdopted = true")
+            "JOIN r.defense d " +
+            "WHERE d.aCase.id = :caseId AND r.isAdopted = true AND r.isBlind = false") // ✨ isBlind = false 조건 추가
     List<Rebuttal> findAdoptedRebuttalsByCaseId(@Param("caseId") Long caseId);
 
     //변론당 좋아요 많은 반론
     List<Rebuttal> findByDefense_IdOrderByLikesCountDesc(Long defenseId);
 
-    //사건별 좋아요가 많은 변론 상위 10개
-    List<Rebuttal> findTop5ByDefense_aCase_IdAndTypeOrderByLikesCountDesc(Long caseId, DebateSide type);
+    //사건별 좋아요가 많은 변론 상위 5개
+    List<Rebuttal> findTop5ByDefense_aCase_IdAndTypeAndIsBlindFalseOrderByLikesCountDesc(Long caseId, DebateSide type); // ✨ 메서드 이름 수정
 
-    List<Rebuttal> findAllByDefense_aCase_IdAndType(Long caseId, DebateSide type);
+    // [수정] FinalJudgeService 사용. BLIND 미포함
+    List<Rebuttal> findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(Long caseId, DebateSide type); // ✨ 메서드 이름 수정
 }
