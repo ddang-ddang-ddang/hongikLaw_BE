@@ -1,10 +1,13 @@
 # DdangDdangDdang (땅땅땅) SERVER
 
-> **"그 사건, AI 판사는 어떻게 생각할까?"** \> 사용자가 제기한 밸런스 게임 안건에 대해 **AI가 즉결 심판**을 내리고,  
-> 유저들이 변호사가 되어 **토론 및 투표**를 통해 최종 판결을 뒤집는 **AI 기반 법정 토론 플랫폼**입니다.
+**AI 판사와 함께하는 밸런스 게임 & 토론 플랫폼 ‘땅땅땅’**의 백엔드 서버입니다.
 
-https://ddang-ddang-ddang-fe-8npo.vercel.app/<br>
-https://ddangx3.site/
+> **"그 사건, AI 판사는 어떻게 생각할까?"** \
+> 사용자가 제기한 밸런스 게임 안건에 대해 **AI가 즉결 심판**을 내리고,  
+> 유저들이 변호사가 되어 **토론 및 투표**를 통해 최종 판결을 내리는 **AI 기반 법정 토론 플랫폼**입니다.
+
+Client : https://ddang-ddang-ddang-fe-8npo.vercel.app/<br>
+Server : https://ddangx3.site/
 
 ## 📖 프로젝트 소개
 
