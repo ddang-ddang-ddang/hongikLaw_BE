@@ -13,6 +13,7 @@ import com.demoday.ddangddangddang.dto.caseDto.party.CasePendingResponseDto;
 import com.demoday.ddangddangddang.dto.caseDto.second.AppealRequestDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
+import com.demoday.ddangddangddang.global.sse.SseEmitters;
 import com.demoday.ddangddangddang.repository.ArgumentInitialRepository;
 import com.demoday.ddangddangddang.repository.CaseRepository;
 import com.demoday.ddangddangddang.repository.JudgmentRepository;
@@ -46,6 +47,7 @@ public class CaseService {
     private final ChatGptService chatGptService;
     private final CaseParticipationRepository caseParticipationRepository;
     private final RankingService rankingService;
+    private final SseEmitters sseEmitters;
 
     @Transactional
     public CaseResponseDto createCase(CaseRequestDto requestDto, User user) {
@@ -169,6 +171,10 @@ public class CaseService {
         if (assignedSide == DebateSide.B) {
             ArgumentInitial firstArgument = arguments.get(0); // 기존 A측 입장문
             List<ArgumentInitial> allArguments = List.of(firstArgument, argument);
+            Long hostUserId = firstArgument.getUser().getId(); // 방장(A) ID
+
+            // A에게 알림 전송
+            sseEmitters.sendNotification(hostUserId, "notification", "상대방이 입장하여 1차 재판이 시작됩니다!");
 
             // AI 1차 판결 요청
             AiJudgmentDto aiResult = chatGptService.getAiJudgment(aCase, allArguments);

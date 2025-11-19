@@ -12,7 +12,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class SseEmitters {
 
+    //사건을 파라미터로 해서 연결
     private final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
+    //유저 아이디를 파라미터로 해서 연결
+    private final Map<Long, SseEmitter> userEmitters = new ConcurrentHashMap<>();
 
     public SseEmitter add(Long caseId) {
         SseEmitter emitter = new SseEmitter(60 * 1000L * 10); // 10분 타임아웃
@@ -67,6 +70,45 @@ public class SseEmitters {
                 this.emitters.remove(caseId);
             } catch (IOException e) {
                 this.emitters.remove(caseId);
+            }
+        }
+    }
+
+    // 유저가 로그인 후 알림을 구독할 때 호출
+    public SseEmitter connectUser(Long userId) {
+        // 타임아웃: 1시간 (필요에 따라 조정)
+        SseEmitter emitter = new SseEmitter(60 * 1000L * 60);
+        this.userEmitters.put(userId, emitter);
+        log.info("SSE Connected User: userId={}", userId);
+
+        emitter.onCompletion(() -> this.userEmitters.remove(userId));
+        emitter.onTimeout(() -> {
+            emitter.complete();
+            this.userEmitters.remove(userId);
+        });
+        emitter.onError((e) -> this.userEmitters.remove(userId));
+
+        // 연결 확인용 더미 데이터 전송 (연결 즉시 안 보내면 타임아웃 나는 브라우저 이슈 방지)
+        try {
+            emitter.send(SseEmitter.event().name("connect").data("connected!"));
+        } catch (IOException e) {
+            log.error("SSE Connect Error", e);
+        }
+
+        return emitter;
+    }
+
+    // 특정 유저에게 알림 전송
+    public void sendNotification(Long userId, String eventName, String message) {
+        SseEmitter emitter = this.userEmitters.get(userId);
+        if (emitter != null) {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name(eventName) // 예: "new_participant", "new_rebuttal"
+                        .data(message));
+            } catch (IOException e) {
+                this.userEmitters.remove(userId);
+                log.error("SSE Notification Send Error: userId={}", userId);
             }
         }
     }
