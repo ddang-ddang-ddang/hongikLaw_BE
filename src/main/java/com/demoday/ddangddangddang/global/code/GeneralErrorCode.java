@@ -38,6 +38,9 @@ public enum GeneralErrorCode implements BaseErrorCode {
     //사건 에러
     CASE_NOT_FOUND(HttpStatus.NOT_FOUND,"CASE_4041","사건을 찾을 수 없습니다."),
 
+    // 기존 Enum에 아래 코드 추가
+    REPORT_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "REPORT_4001", "이미 신고한 콘텐츠입니다."),
+
     //판결 에러
     JUDGE_NOT_FOUND(HttpStatus.NOT_FOUND,"JUDGE_4041","판결을 찾을 수 없습니다.");
 
