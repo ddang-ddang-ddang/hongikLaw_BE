@@ -12,6 +12,7 @@ import com.demoday.ddangddangddang.repository.DefenseRepository;
 import com.demoday.ddangddangddang.repository.RebuttalRepository;
 import com.demoday.ddangddangddang.repository.ReportRepository;
 import com.demoday.ddangddangddang.repository.UserRepository;
+import com.demoday.ddangddangddang.service.SlackNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class ReportService {
     private final UserRepository userRepository;
     private final DefenseRepository defenseRepository;
     private final RebuttalRepository rebuttalRepository;
+    private final SlackNotificationService slackNotificationService;
 
     private static final int BLIND_THRESHOLD = 5; // 신고 임계값=5
 
@@ -49,9 +51,12 @@ public class ReportService {
                 .customReason(requestDto.getCustomReason())
                 .build();
 
-        reportRepository.save(report);
+        Report savedReport = reportRepository.save(report); // 저장된 엔티티 사용
 
-        // 4. 누적 신고 횟수 확인 및 BLIND 처리
+        // ⭐️ 4. Slack 알림 전송 (비동기)
+        slackNotificationService.sendReportNotification(savedReport, reporter.getNickname());
+
+        // 5. 누적 신고 횟수 확인 및 BLIND 처리
         processBlindStatus(requestDto.getContentId(), requestDto.getContentType());
     }
 

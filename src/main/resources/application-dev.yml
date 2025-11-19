@@ -54,3 +54,7 @@ openai:
   client:
     connect-timeout: 10s
     read-timeout: 60s
+
+slack:
+  webhook:
+    url: ${SLACK_WEBHOOK_URL}
