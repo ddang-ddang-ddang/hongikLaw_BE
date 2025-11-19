@@ -279,37 +279,6 @@ public class CaseService {
                 .collect(Collectors.toList());
     }
 
-    // ✨ [신규] 2차 재판 진행 목록 조회 (SECOND 상태)
-    @Transactional(readOnly = true)
-    public List<CaseOnResponseDto> getSecondStageCases() {
-        // 1. SECOND 상태인 사건 목록을 최신순으로 조회
-        List<Case> secondCases = caseRepository.findAllByStatusOrderByCreatedAtDesc(CaseStatus.SECOND);
-
-        if (secondCases.isEmpty()) {
-            return List.of();
-        }
-
-        // 2. N+1 문제 방지를 위해 모든 SECOND 사건의 1차 입장문을 한 번에 조회
-        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseInOrderByTypeAsc(secondCases);
-
-        // 3. Case ID 기준으로 A, B측 입장문(mainArgument) 목록을 매핑
-        Map<Long, List<String>> argumentsMap = arguments.stream()
-                .collect(Collectors.groupingBy(
-                        argument -> argument.getACase().getId(),
-                        Collectors.mapping(ArgumentInitial::getMainArgument, Collectors.toList())
-                ));
-
-        // 4. DTO로 변환하여 반환
-        return secondCases.stream()
-                .map(aCase -> CaseOnResponseDto.builder()
-                        .caseId(aCase.getId())
-                        .title(aCase.getTitle())
-                        .status(aCase.getStatus())
-                        .mainArguments(argumentsMap.getOrDefault(aCase.getId(), List.of()))
-                        .build())
-                .collect(Collectors.toList());
-    }
-
     private Case findCaseById(Long caseId) {
         return caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "사건을 찾을 수 없습니다."));

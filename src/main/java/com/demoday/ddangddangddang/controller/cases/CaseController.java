@@ -49,14 +49,6 @@ public class CaseController {
         return ResponseEntity.ok(ApiResponse.onSuccess("매칭 대기 중인 사건 목록 조회 성공", responseDto));
     }
 
-    // [신규] 2차 재판 진행 목록 조회
-    @Operation(summary = "2차 재판 진행 목록 조회", description = "현재 2차 재판(SECOND)이 진행 중인 사건 목록을 조회합니다.")
-    @GetMapping("/second")
-    public ResponseEntity<ApiResponse<List<CaseOnResponseDto>>> getSecondStageCases() {
-        List<CaseOnResponseDto> responseDto = caseService.getSecondStageCases();
-        return ResponseEntity.ok(ApiResponse.onSuccess("2차 재판 진행 사건 목록 조회 성공", responseDto));
-    }
-
     // VS 모드 1차 입장문 제출 (참여)
     @Operation(summary = "VS 모드 1차 입장문 제출 (참여)", description = "PENDING 상태인 사건에 B측 입장문을 제출하여 참여합니다.")
     @SecurityRequirement(name = "JWT TOKEN")
