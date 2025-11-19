@@ -65,6 +65,7 @@ public class MainpageService {
         User user = userRepository.findById(userId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
 
+        // [FIX] DefenseRepository에 findDefenseByUser(User user)를 다시 정의했으므로 에러 해결
         List<Defense> defenses = defenseRepository.findDefenseByUser(user);
 
         List<Rebuttal> rebuttals = rebuttalRepository.findRebuttalByUser(user);
@@ -78,6 +79,7 @@ public class MainpageService {
                         .content(defense.getContent())
                         .likeCount(defense.getLikesCount())
                         .caseResult(defense.getCaseResult())
+                        .isBlind(defense.getIsBlind())
                         .build())
                 .collect(Collectors.toList());
 
@@ -90,6 +92,7 @@ public class MainpageService {
                         .content(rebuttal.getContent())
                         .likeCount(rebuttal.getLikesCount())
                         .caseResult(rebuttal.getCaseResult())
+                        .isBlind(rebuttal.getIsBlind())
                         .build())
                 .collect(Collectors.toList());
 

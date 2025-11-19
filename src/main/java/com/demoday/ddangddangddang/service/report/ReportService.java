@@ -1,5 +1,7 @@
 package com.demoday.ddangddangddang.service.report;
 
+import com.demoday.ddangddangddang.domain.Defense;
+import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.Report;
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.enums.ContentType;
@@ -24,6 +26,8 @@ public class ReportService {
     private final DefenseRepository defenseRepository;
     private final RebuttalRepository rebuttalRepository;
 
+    private static final int BLIND_THRESHOLD = 5; // 신고 임계값=5
+
     public void createReport(Long userId, ReportRequestDto requestDto) {
         User reporter = userRepository.findById(userId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
@@ -46,6 +50,29 @@ public class ReportService {
                 .build();
 
         reportRepository.save(report);
+
+        // 4. 누적 신고 횟수 확인 및 BLIND 처리
+        processBlindStatus(requestDto.getContentId(), requestDto.getContentType());
+    }
+
+    private void processBlindStatus(Long contentId, ContentType contentType) {
+        // 신고 횟수 조회 (Report 엔티티의 레코드가 누적 신고 횟수)
+        long reportCount = reportRepository.countByContentIdAndContentType(contentId, contentType);
+
+        if (reportCount >= BLIND_THRESHOLD) {
+            if (contentType == ContentType.DEFENSE) {
+                Defense defense = defenseRepository.findById(contentId).orElse(null);
+                if (defense != null && !defense.getIsBlind()) {
+                    defense.markAsBlind();
+                    // 추가적으로 신고자들에게 처리 결과 알림 등의 로직을 구현할 수 있습니다.
+                }
+            } else if (contentType == ContentType.REBUTTAL) {
+                Rebuttal rebuttal = rebuttalRepository.findById(contentId).orElse(null);
+                if (rebuttal != null && !rebuttal.getIsBlind()) {
+                    rebuttal.markAsBlind();
+                }
+            }
+        }
     }
 
     private void validateContentExists(Long contentId, ContentType contentType) {

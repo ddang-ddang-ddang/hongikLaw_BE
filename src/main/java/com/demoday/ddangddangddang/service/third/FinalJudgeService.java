@@ -60,7 +60,7 @@ public class FinalJudgeService {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE);
         }
 
-        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdoptedAndIsBlindFalse(caseId, true);
         List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
         return new JudgeContextDto(foundCase, adoptedDefenses, adoptedRebuttals);
@@ -74,8 +74,7 @@ public class FinalJudgeService {
         Case foundCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        // adopted items 다시 조회 (영속성 컨텍스트 관리 위해)
-        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdoptedAndIsBlindFalse(caseId, true);
         List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
         List<Long> adoptedDefenseIds = adoptedDefenses.stream().map(Defense::getId).toList();
@@ -318,8 +317,11 @@ public class FinalJudgeService {
     }
 
     private SideItems loadSideItems(Long caseId, DebateSide side) {
-        List<Defense> defenses = defenseRepository.findAllByaCase_IdAndType(caseId, side);
-        List<Rebuttal> rebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndType(caseId, side);
+        // [FIX for error 321 - Defense] BLIND 미포함 메서드 사용
+        List<Defense> defenses = defenseRepository.findAllByaCase_IdAndTypeAndIsBlindFalse(caseId, side);
+
+        // [FIX for error 321 - Rebuttal] BLIND 미포함 메서드 사용
+        List<Rebuttal> rebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(caseId, side);
         return new SideItems(side, defenses, rebuttals);
     }
 
@@ -433,8 +435,8 @@ public class FinalJudgeService {
         long votesA = voteRepository.countByaCase_IdAndType(caseId, DebateSide.A);
         long votesB = voteRepository.countByaCase_IdAndType(caseId, DebateSide.B);
 
-        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId, true);
-        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdoptedAndIsBlindFalse(aCase.getId(), true);
+        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(aCase.getId());
 
         return chatGptService2.requestFinalJudgment(
                 aCase, adoptedDefenses, adoptedRebuttals, votesA, votesB

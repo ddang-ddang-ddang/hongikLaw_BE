@@ -88,8 +88,14 @@ public class DebateService {
         Case aCase = findCaseById(caseId);
         checkCaseStatusIsSecond(aCase); // 2차 재판 상태인지 확인
 
-        List<Defense> defenseList = defenseRepository.findAllByaCase_Id(caseId);
-        List<Rebuttal> rebuttalList = rebuttalRepository.findAllByDefense_aCase_Id(caseId);
+        // 수정: isBlind=false 조건 추가
+        List<Defense> defenseList = defenseRepository.findAllByaCase_IdAndIsBlindFalse(caseId); // (수정된 메서드 사용 가정)
+        // 수정: Rebuttal 조회에도 isBlind=false 조건이 포함되어야 합니다. (QueryDSL 사용 시 용이)
+        // JPA 메서드명은 복잡해지므로, Repositroy에 메서드 추가가 필요합니다. (여기서는 간단한 예시로 대체)
+        List<Rebuttal> rebuttalList = rebuttalRepository.findAllByDefense_aCase_Id(caseId).stream()
+                .filter(r -> !r.getIsBlind())
+                .collect(Collectors.toList());
+
         Vote userVote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId()).orElse(null);
 
         // 2차 재판(FINAL) 판결문 조회 (가장 최신 버전으로 수정)
@@ -114,11 +120,16 @@ public class DebateService {
         Case aCase = findCaseById(caseId);
         checkCaseStatusIsSecond(aCase); // 2차 재판 상태인지 확인
 
-        List<Defense> defenses = defenseRepository.findAllByaCase_Id(caseId);
+        // 1. [수정] DefenseRepository의 새로운 메서드를 사용하여 BLIND 처리되지 않은 변론만 조회합니다.
+        List<Defense> defenses = defenseRepository.findAllByaCase_IdAndIsBlindFalse(caseId);
+
         Set<Long> userLikedDefenseIds = likeRepository.findAllByUserAndContentType(user, ContentType.DEFENSE)
                 .stream().map(Like::getContentId).collect(Collectors.toSet());
+
+        // 2. [수정] 반론 개수를 셀 때, 반론 엔티티의 isBlind 필드가 false인 항목만 카운트하도록 필터링을 추가합니다.
         Map<Long, Long> rebuttalCounts = rebuttalRepository.findAllByDefense_aCase_Id(caseId)
                 .stream()
+                .filter(r -> !r.getIsBlind()) // ✨ BLIND 반론 제외 필터링 추가
                 .collect(Collectors.groupingBy(r -> r.getDefense().getId(), Collectors.counting()));
 
         return defenses.stream()

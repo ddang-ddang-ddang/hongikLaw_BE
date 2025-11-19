@@ -47,9 +47,11 @@ public class AdoptService {
         //유저 진영 확인
         DebateSide type = userInitialArgument.getType();
 
-        List<Defense> allDefenses = defenseRepository.findAllByaCase_IdAndType(caseId,type);
+        // [FIX for error 50] BLIND 미포함 메서드 사용
+        List<Defense> allDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsBlindFalse(caseId, type);
 
-        List<Rebuttal> allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndType(caseId,type);
+        // [RebuttalRepository의 변경도 반영 필요] BLIND 미포함 메서드 사용
+        List<Rebuttal> allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(caseId, type);
 
         Stream<AdoptableItemDto> defenseStream = allDefenses.stream()
                 .map(d -> AdoptableItemDto.builder()
@@ -211,8 +213,9 @@ public class AdoptService {
         Case acase = caseRepository.findById(caseId)
                 .orElseThrow(()-> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdopted(caseId,Boolean.TRUE);
-        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+        // [FIX for error 214] BLIND 미포함 메서드 사용
+        List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdoptedAndIsBlindFalse(caseId,Boolean.TRUE);
+        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId); // 이 메서드는 Repository에서 쿼리 수정됨
 
         Stream<AdoptableItemDto> defenseStream = adoptedDefenses.stream()
                 .map(d -> AdoptableItemDto.builder()

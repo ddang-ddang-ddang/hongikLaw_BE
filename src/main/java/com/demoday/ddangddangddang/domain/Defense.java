@@ -44,6 +44,11 @@ public class Defense extends BaseEntity {
     @Column(name = "is_adopted", nullable = false)
     private Boolean isAdopted = false;
 
+    // 신고 5회 당하면 블라인드 되는거
+    @Builder.Default
+    @Column(name = "is_blind", nullable = false)
+    private Boolean isBlind = false;
+
     @Builder.Default
     @Column(name = "case_result")
     private CaseResult caseResult = CaseResult.PENDING;
@@ -60,13 +65,14 @@ public class Defense extends BaseEntity {
 
     public void markAsAdoptedFalse() { this.isAdopted = false; }
 
+    public void markAsBlind() { this.isBlind = true; }
+
     public void incrementLikesCount() { this.likesCount++; }
 
     public void decrementLikesCount() {
         if (this.likesCount > 0) this.likesCount--;
     }
 
-    // 결과 업데이트 메서드
     public void updateResult(CaseResult result) {
         this.caseResult = result;
     }
