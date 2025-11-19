@@ -165,47 +165,98 @@ public class AdoptService {
         return ApiResponse.onSuccess("success","최종심에 반영될 의견 채택 완료");
     }
 
-    //사용자가 채택하지 않은 경우 자동 채택
-    public ApiResponse<String> adoptAuto(Long userId, Long caseId){
+    public ApiResponse<String> adoptAuto(Long userId, Long caseId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(()-> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
 
         Case aCase = caseRepository.findById(caseId)
-                .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        //유저가 initial한 사건인지 확인
+        // 유저의 진영 확인
         List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
-
-        //하나라도 유저가 참여한 항목 반환
         ArgumentInitial userInitialArgument = allInitialArguments.stream()
                 .filter(arg -> arg.getUser().getId().equals(userId))
                 .findFirst()
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
 
-        ApiResponse<AdoptResponseDto> top5Response = getOpinionBest(userId, caseId);
-        List<AdoptableItemDto> top5Items = top5Response.getResult().getItems();
+        // 공통 로직 호출 (해당 진영에 대해 자동 채택 수행)
+        performAutoAdoptForSide(aCase, userInitialArgument.getType());
 
-        if (top5Items == null || top5Items.isEmpty()) {
-            return ApiResponse.onSuccess("success", "자동 채택할 항목이 없습니다.");
+        return ApiResponse.onSuccess("success", "상위 5개 항목이 자동으로 채택되었습니다.");
+    }
+
+    /**
+     * [추가된 메서드] 스케줄러를 위한 시스템 자동 채택
+     * userId 없이 Case 객체만으로 해당 사건의 양쪽 진영 모두에 대해 자동 채택을 수행합니다.
+     */
+    public void executeSystemAutoAdopt(Case aCase) {
+        // 1. 해당 사건의 초기 참여자 정보(진영 정보)를 모두 가져옴
+        List<ArgumentInitial> participants = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+
+        // 2. 각 참여자(진영) 별로 자동 채택 로직 수행
+        for (ArgumentInitial participant : participants) {
+            performAutoAdoptForSide(aCase, participant.getType());
         }
 
-        // 4. 가져온 5개 항목을 '채택' 상태로 변경 (createAdopt 로직과 유사)
+        // 3. 사건 상태 변경
+        aCase.setThird();
+    }
+
+    /**
+     * [내부 공통 메서드] 특정 사건, 특정 진영에 대한 상위 5개 자동 채택 로직
+     * userId 검증 없이 순수하게 DB 조회 및 업데이트만 수행
+     */
+    private void performAutoAdoptForSide(Case aCase, DebateSide type) {
+        Long caseId = aCase.getId();
+
+        // 1. 해당 진영의 Defense 조회 (BLIND 제외)
+        List<Defense> allDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsBlindFalse(caseId, type);
+
+        // 2. 해당 진영의 Rebuttal 조회 (BLIND 제외)
+        List<Rebuttal> allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(caseId, type);
+
+        // 3. Stream 변환 및 통합 (getOpinionBest 로직 재사용)
+        Stream<AdoptableItemDto> defenseStream = allDefenses.stream()
+                .map(d -> AdoptableItemDto.builder()
+                        .itemType(ContentType.DEFENSE)
+                        .id(d.getId())
+                        .likeCount(d.getLikesCount())
+                        .build());
+
+        Stream<AdoptableItemDto> rebuttalStream = allRebuttals.stream()
+                .map(r -> AdoptableItemDto.builder()
+                        .itemType(ContentType.REBUTTAL)
+                        .id(r.getId())
+                        .likeCount(r.getLikesCount())
+                        .build());
+
+        // 4. 좋아요 순 정렬 후 상위 5개 추출
+        List<AdoptableItemDto> top5Items = Stream.concat(defenseStream, rebuttalStream)
+                .sorted(Comparator.comparing(AdoptableItemDto::getLikeCount).reversed())
+                .limit(5)
+                .toList();
+
+        if (top5Items.isEmpty()) return;
+
+        // 5. 채택 상태 변경 및 경험치 지급
         for (AdoptableItemDto item : top5Items) {
             if (item.getItemType() == ContentType.DEFENSE) {
-                Defense defense = defenseRepository.findById(item.getId())
-                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채택할 변론을 찾을 수 없습니다."));
-                defense.markAsAdopted();
-                defense.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
-
+                defenseRepository.findById(item.getId()).ifPresent(defense -> {
+                    // 이미 채택된 경우 중복 처리 방지 (옵션)
+                    if (!Boolean.TRUE.equals(defense.getIsAdopted())) {
+                        defense.markAsAdopted();
+                        defense.getUser().updateExp(100L);
+                    }
+                });
             } else if (item.getItemType() == ContentType.REBUTTAL) {
-                Rebuttal rebuttal = rebuttalRepository.findById(item.getId())
-                        .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "자동 채 채택할 반론을 찾을 수 없습니다."));
-                rebuttal.markAsAdopted();
-                rebuttal.getUser().updateExp(100L); // 의견 작성자에게 경험치 부여
+                rebuttalRepository.findById(item.getId()).ifPresent(rebuttal -> {
+                    if (!Boolean.TRUE.equals(rebuttal.getIsAdopted())) {
+                        rebuttal.markAsAdopted();
+                        rebuttal.getUser().updateExp(100L);
+                    }
+                });
             }
         }
-
-        return ApiResponse.onSuccess("success","상위 5개 항목이 자동으로 채택되었습니다.");
     }
 
     //채택된 반론&변론 조회
