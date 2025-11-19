@@ -1,14 +1,18 @@
 package com.demoday.ddangddangddang.service.third;
 
+import com.demoday.ddangddangddang.domain.CaseParticipation;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.third.JudgeContextDto;
 import com.demoday.ddangddangddang.dto.third.FinalJudgmentRequestDto;
 import com.demoday.ddangddangddang.global.sse.SseEmitters;
+import com.demoday.ddangddangddang.repository.CaseParticipationRepository;
 import com.demoday.ddangddangddang.service.ChatGptService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -18,6 +22,7 @@ public class JudgmentAsyncExecutor {
     private final FinalJudgeService finalJudgeService;
     private final ChatGptService chatGptService;
     private final SseEmitters sseEmitters;
+    private final CaseParticipationRepository caseParticipationRepository;
 
     @Async
     public void processAsyncJudgment(Long caseId, FinalJudgmentRequestDto voteDto, JudgeContextDto context) {
@@ -34,23 +39,35 @@ public class JudgmentAsyncExecutor {
                     voteDto.getVotesB()
             );
             long apiCallEnd = System.currentTimeMillis();
-            log.warn("⏱️ [측정] ChatGPT API 호출 시간: {}ms", apiCallEnd - apiCallStart);
 
             // B. DB 저장 및 정산
             long dbStart = System.currentTimeMillis();
             Long judgmentId = finalJudgeService.saveJudgeResultAndSettle(caseId, aiResult);
             long dbEnd = System.currentTimeMillis();
-            log.warn("⏱️ [측정] DB 저장 및 정산 시간: {}ms", dbEnd - dbStart);
 
             // C. SSE 알림
-            sseEmitters.send(caseId, judgmentId);
+            // 1. 해당 사건의 참여자 목록 조회
+            List<CaseParticipation> participants = caseParticipationRepository.findByaCase(context.getACase());
 
+            // 2. 참여자들에게 각각 알림 전송
+            for (CaseParticipation participation : participants) {
+                Long userId = participation.getUser().getId();
+
+                // 유저별 연결에 'judgment_complete' 이벤트 전송
+                sseEmitters.sendNotification(
+                        userId,
+                        "judgment_complete",
+                        String.valueOf(judgmentId) // 데이터로 판결문 ID 전송
+                );
+            }
             long endTime = System.currentTimeMillis();
-            log.info("[Async] 총 비동기 작업 시간: {}ms", endTime - startTime);
 
         } catch (Exception e) {
-            log.error("[Async] 판결 프로세스 실패: caseId={}, error={}", caseId, e.getMessage(), e);
-            sseEmitters.sendError(caseId, "판결 생성 중 오류가 발생했습니다.");
+                // 에러 알림도 동일하게 참여자들에게 전송
+                List<CaseParticipation> participant = caseParticipationRepository.findByaCase(context.getACase());
+                for (CaseParticipation p : participant) {
+                    sseEmitters.sendNotification(p.getUser().getId(), "judgment_error", "판결 생성 중 오류가 발생했습니다.");
+            }
         }
     }
 }

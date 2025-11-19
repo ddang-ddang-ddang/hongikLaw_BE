@@ -30,11 +30,11 @@ public class FinalJudgeController {
     private final FinalJudgeService finalJudgeService;
     private final SseEmitters sseEmitters;
 
-    // 1. [SSE] 판결 완료 알림 구독 (클라이언트가 먼저 연결해야 함)
-    @GetMapping(value = "/subscribe/{caseId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribe(@PathVariable Long caseId) {
-        return sseEmitters.add(caseId);
-    }
+//    // 1. [SSE] 판결 완료 알림 구독 (클라이언트가 먼저 연결해야 함)
+//    @GetMapping(value = "/subscribe/{caseId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+//    public SseEmitter subscribe(@PathVariable Long caseId) {
+//        return sseEmitters.add(caseId);
+//    } //엔드포인트 통일로 삭제
 
     // 2. [POST] 판결 요청 (비동기 처리됨)
     @SecurityRequirement(name = "JWT TOKEN")
