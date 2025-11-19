@@ -4,6 +4,7 @@ import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
 import com.demoday.ddangddangddang.dto.caseDto.second.*;
+import com.demoday.ddangddangddang.dto.home.CaseOnResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.security.UserDetailsImpl;
 import com.demoday.ddangddangddang.service.cases.DebateService;
@@ -52,6 +53,16 @@ public class DebateController {
     ) {
         CaseDetail2ndResponseDto responseDto = debateService.getDebateDetails(caseId, userDetails.getUser());
         return ResponseEntity.ok(ApiResponse.onSuccess("2차 재판 정보 조회에 성공하였습니다.", responseDto));
+    }
+
+    /**
+     *  2차 재판 진행 목록 조회 엔드포인트 추가
+     */
+    @Operation(summary = "2차 재판 진행 목록 조회", description = "현재 2차 재판(SECOND)이 진행 중인 사건 목록을 조회합니다.")
+    @GetMapping("/cases/second") // <-- 최종 경로: /api/v1/cases/second
+    public ResponseEntity<ApiResponse<List<CaseOnResponseDto>>> getSecondStageCases() {
+        List<CaseOnResponseDto> responseDto = debateService.getSecondStageCases();
+        return ResponseEntity.ok(ApiResponse.onSuccess("2차 재판 진행 사건 목록 조회 성공", responseDto));
     }
 
     @Operation(summary = "2차 재판 '변론' 목록 조회", description = "2차 재판의 모든 '변론' 목록과 각 변론의 '반론 개수'를 조회합니다.")
