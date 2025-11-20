@@ -67,6 +67,9 @@ public class Defense extends BaseEntity {
 
     public void markAsBlind() { this.isBlind = true; }
 
+    // [추가] 블라인드 해제
+    public void unmarkAsBlind() { this.isBlind = false; }
+
     public void incrementLikesCount() { this.likesCount++; }
 
     public void decrementLikesCount() {
