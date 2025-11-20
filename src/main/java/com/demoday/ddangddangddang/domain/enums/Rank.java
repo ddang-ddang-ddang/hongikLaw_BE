@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
@@ -23,6 +24,7 @@ public enum Rank {
     NOVICE_BRAWLER("말싸움 하수", 100L),
     NEWBIE_BRAWLER("말싸움 풋내기", 0L);
 
+    @JsonValue
     private final String displayName;
     private final Long minExp;
 
