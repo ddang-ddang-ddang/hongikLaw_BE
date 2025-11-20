@@ -1,17 +1,13 @@
 package com.demoday.ddangddangddang.service.cases;
 
 // ... (기존 imports) ...
-import com.demoday.ddangddangddang.domain.ArgumentInitial;
-import com.demoday.ddangddangddang.domain.Case;
-import com.demoday.ddangddangddang.domain.Judgment;
-import com.demoday.ddangddangddang.domain.User;
-import com.demoday.ddangddangddang.domain.CaseParticipation; // [추가]
+import com.demoday.ddangddangddang.domain.*;
 import com.demoday.ddangddangddang.domain.enums.*;
+import com.demoday.ddangddangddang.domain.event.CaseCreatedEvent;
+import com.demoday.ddangddangddang.domain.event.CaseParticipationEvent;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.*;
 import com.demoday.ddangddangddang.dto.caseDto.party.CasePendingResponseDto;
-import com.demoday.ddangddangddang.dto.caseDto.second.AppealRequestDto;
-import com.demoday.ddangddangddang.dto.home.CaseOnResponseDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.global.sse.SseEmitters;
@@ -20,21 +16,15 @@ import com.demoday.ddangddangddang.repository.CaseRepository;
 import com.demoday.ddangddangddang.repository.JudgmentRepository;
 import com.demoday.ddangddangddang.repository.CaseParticipationRepository; // [추가]
 import com.demoday.ddangddangddang.service.ChatGptService;
-import com.demoday.ddangddangddang.service.auth.AuthService; // [수정] 사용하지 않는 import 제거
-import com.demoday.ddangddangddang.service.cases.DebateService;
 import com.demoday.ddangddangddang.service.ranking.RankingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -49,6 +39,7 @@ public class CaseService {
     private final CaseParticipationRepository caseParticipationRepository;
     private final RankingService rankingService;
     private final SseEmitters sseEmitters;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public CaseResponseDto createCase(CaseRequestDto requestDto, User user) {
@@ -73,18 +64,45 @@ public class CaseService {
                 .build();
         caseRepository.save(newCase);
 
-        ArgumentInitial argumentA = ArgumentInitial.builder().aCase(newCase).user(user).type(DebateSide.A).mainArgument(requestDto.getArgumentAMain()).reasoning(requestDto.getArgumentAReasoning()).build();
+        //A입장문 저장
+        ArgumentInitial argumentA = ArgumentInitial.builder()
+                .aCase(newCase)
+                .user(user)
+                .type(DebateSide.A)
+                .mainArgument(requestDto.getArgumentAMain())
+                .reasoning(requestDto.getArgumentAReasoning()).build();
         argumentInitialRepository.save(argumentA);
-        ArgumentInitial argumentB = ArgumentInitial.builder().aCase(newCase).user(user).type(DebateSide.B).mainArgument(requestDto.getArgumentBMain()).reasoning(requestDto.getArgumentBReasoning()).build();
+
+        //B 입장문 저장
+        ArgumentInitial argumentB = ArgumentInitial.builder()
+                .aCase(newCase)
+                .user(user)
+                .type(DebateSide.B)
+                .mainArgument(requestDto.getArgumentBMain())
+                .reasoning(requestDto.getArgumentBReasoning())
+                .build();
         argumentInitialRepository.save(argumentB);
 
-        caseParticipationRepository.save(CaseParticipation.builder().aCase(newCase).user(user).result(CaseResult.PENDING).build()); // [수정] Result 추가
+        caseParticipationRepository.save(CaseParticipation.builder()
+                .aCase(newCase)
+                .user(user)
+                .result(CaseResult.PENDING)
+                .build()); // [수정] Result 추가
 
         List<ArgumentInitial> arguments = List.of(argumentA, argumentB);
         AiJudgmentDto aiResult = chatGptService.getAiJudgment(newCase, arguments);
 
-        Judgment judgment = Judgment.builder().aCase(newCase).stage(JudgmentStage.INITIAL).content(aiResult.getVerdict()).basedOn(aiResult.getConclusion()).ratioA(aiResult.getRatioA()).ratioB(aiResult.getRatioB()).build();
+        Judgment judgment = Judgment.builder()
+                .aCase(newCase)
+                .stage(JudgmentStage.INITIAL)
+                .content(aiResult.getVerdict())
+                .basedOn(aiResult.getConclusion())
+                .ratioA(aiResult.getRatioA())
+                .ratioB(aiResult.getRatioB()).build();
         judgmentRepository.save(judgment);
+
+        //이벤트 발생
+        eventPublisher.publishEvent(new CaseCreatedEvent(user));
 
         return new CaseResponseDto(newCase.getId());
     }
@@ -113,10 +131,16 @@ public class CaseService {
         argumentInitialRepository.save(argumentA);
 
         // A측 참여 기록 저장
-        caseParticipationRepository.save(CaseParticipation.builder().aCase(newCase).user(user).result(CaseResult.PENDING).build());
+        caseParticipationRepository.save(CaseParticipation.builder()
+                .aCase(newCase)
+                .user(user)
+                .result(CaseResult.PENDING).build());
 
         // VS 모드 사건 생성 시 +100 exp
         user.addExp(100L);
+
+        //이벤트 리스너 호출(사건 생성)
+        eventPublisher.publishEvent(new CaseCreatedEvent(user));
 
         return new CaseResponseDto(newCase.getId());
     }
@@ -156,7 +180,11 @@ public class CaseService {
         }
 
         // CaseParticipation 생성
-        caseParticipationRepository.save(CaseParticipation.builder().aCase(aCase).user(user).result(CaseResult.PENDING).build());
+        caseParticipationRepository.save(CaseParticipation.builder()
+                .aCase(aCase)
+                .user(user)
+                .result(CaseResult.PENDING)
+                .build());
 
         // 입장문 생성
         ArgumentInitial argument = ArgumentInitial.builder()
@@ -193,6 +221,8 @@ public class CaseService {
             // 사건 상태를 PENDING -> FIRST로 변경
             aCase.updateStatus(CaseStatus.FIRST);
         }
+
+        eventPublisher.publishEvent(new CaseParticipationEvent(user));
     }
 
 

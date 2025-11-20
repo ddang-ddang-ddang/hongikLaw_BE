@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.repository;
 
 import com.demoday.ddangddangddang.domain.Case;
+import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.enums.CaseStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

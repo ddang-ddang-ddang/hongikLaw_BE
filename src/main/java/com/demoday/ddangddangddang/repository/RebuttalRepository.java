@@ -47,4 +47,6 @@ public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> {
 
     // [수정] FinalJudgeService 사용. BLIND 미포함
     List<Rebuttal> findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(Long caseId, DebateSide type); // ✨ 메서드 이름 수정
+
+    Integer countByUser(User user);
 }

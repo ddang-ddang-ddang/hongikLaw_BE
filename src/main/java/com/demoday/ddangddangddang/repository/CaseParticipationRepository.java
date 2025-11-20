@@ -19,4 +19,6 @@ public interface CaseParticipationRepository extends JpaRepository<CaseParticipa
     List<CaseParticipation> findByUserAndResult(User user, CaseResult caseResult);
 
     List<CaseParticipation> findByaCase(Case aCase);
+
+    Integer countByUser(User user);
 }
