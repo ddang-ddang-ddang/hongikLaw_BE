@@ -2,6 +2,7 @@ package com.demoday.ddangddangddang.service.cases;
 
 import com.demoday.ddangddangddang.domain.*;
 import com.demoday.ddangddangddang.domain.enums.*;
+import com.demoday.ddangddangddang.domain.event.PostCreatedEvent;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.second.*;
 import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
@@ -210,6 +211,8 @@ public class DebateService {
         user.addExp(50L);
 
         rankingService.addCaseScore(caseId, 5.0);
+
+        eventPublisher.publishEvent(new PostCreatedEvent(user,ContentType.DEFENSE));
         // eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId)); // 실시간 ai 판결 업데이트 임시 주석
         return savedDefense;
     }
@@ -267,6 +270,8 @@ public class DebateService {
         user.addExp(50L);
 
         rankingService.addCaseScore(defense.getACase().getId(), 5.0);
+
+        eventPublisher.publishEvent(new PostCreatedEvent(user,ContentType.REBUTTAL));
         // eventPublisher.publishEvent(new UpdateJudgmentEvent(defense.getACase().getId())); // 실시간 ai 판결 업데이트 임시 주석
         return savedRebuttal;
     }

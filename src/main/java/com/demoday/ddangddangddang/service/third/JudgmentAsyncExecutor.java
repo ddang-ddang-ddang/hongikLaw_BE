@@ -38,12 +38,9 @@ public class JudgmentAsyncExecutor {
                     voteDto.getVotesA(),
                     voteDto.getVotesB()
             );
-            long apiCallEnd = System.currentTimeMillis();
 
             // B. DB 저장 및 정산
-            long dbStart = System.currentTimeMillis();
             Long judgmentId = finalJudgeService.saveJudgeResultAndSettle(caseId, aiResult);
-            long dbEnd = System.currentTimeMillis();
 
             // C. SSE 알림
             // 1. 해당 사건의 참여자 목록 조회
@@ -60,7 +57,6 @@ public class JudgmentAsyncExecutor {
                         String.valueOf(judgmentId) // 데이터로 판결문 ID 전송
                 );
             }
-            long endTime = System.currentTimeMillis();
 
         } catch (Exception e) {
                 // 에러 알림도 동일하게 참여자들에게 전송

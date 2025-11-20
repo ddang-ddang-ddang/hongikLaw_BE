@@ -3,6 +3,7 @@ package com.demoday.ddangddangddang.repository;
 import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.User;
+import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -48,4 +49,13 @@ public interface DefenseRepository extends JpaRepository<Defense,Long>{
 
     // [수정] 사건별 + 진영별 모든 변론. BLIND 미포함 (Fixes AdoptService, FinalJudgeService)
     List<Defense> findAllByaCase_IdAndTypeAndIsBlindFalse(Long caseId, DebateSide type);
+
+    Integer countByUserAndCaseResult(User user, CaseResult caseResult);
+
+    Integer countByUserAndIsAdopted(User user, boolean b);
+
+    List<Defense> findByUser(User user);
+
+    @Query("SELECT COALESCE(SUM(d.likesCount), 0) FROM Defense d WHERE d.user = :user")
+    Integer sumLikesByUser(@Param("user") User user);
 }

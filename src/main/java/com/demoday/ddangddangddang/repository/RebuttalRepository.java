@@ -3,6 +3,7 @@ package com.demoday.ddangddangddang.repository;
 import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.User;
+import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -47,4 +48,15 @@ public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> {
 
     // [수정] FinalJudgeService 사용. BLIND 미포함
     List<Rebuttal> findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(Long caseId, DebateSide type); // ✨ 메서드 이름 수정
+
+    Integer countByUser(User user);
+
+    Integer countByUserAndCaseResult(User user, CaseResult caseResult);
+
+    Integer countByUserAndIsAdopted(User user, Boolean isAdopted);
+
+    List<Rebuttal> findByUser(User user);
+
+    @Query("SELECT COALESCE(SUM(r.likesCount), 0) FROM Rebuttal r WHERE r.user = :user")
+    Integer sumLikesByUser(@Param("user") User user);
 }

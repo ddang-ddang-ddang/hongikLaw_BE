@@ -2,6 +2,7 @@ package com.demoday.ddangddangddang.service;
 
 import com.demoday.ddangddangddang.domain.*;
 import com.demoday.ddangddangddang.domain.enums.ContentType;
+import com.demoday.ddangddangddang.domain.event.LikedEvent;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.event.UpdateJudgmentEvent;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
@@ -83,6 +84,7 @@ public class LikeService {
                 caseIdToUpdate = defense.getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate,3.0);
                 defense.getUser().updateExp(5L);
+                eventPublisher.publishEvent(new LikedEvent(defense.getUser()));
             } else {
                 Rebuttal rebuttal = rebuttalRepository.findById(contentId)
                         .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "반론을 찾을 수 없습니다."));
@@ -90,6 +92,7 @@ public class LikeService {
                 caseIdToUpdate = rebuttal.getDefense().getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate,3.0);
                 rebuttal.getUser().updateExp(5L);
+                eventPublisher.publishEvent(new LikedEvent(rebuttal.getUser()));
             }
 
             isLiked = true;

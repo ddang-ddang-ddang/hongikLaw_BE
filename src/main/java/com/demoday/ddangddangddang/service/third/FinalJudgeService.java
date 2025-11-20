@@ -2,6 +2,7 @@ package com.demoday.ddangddangddang.service.third;
 
 import com.demoday.ddangddangddang.domain.*;
 import com.demoday.ddangddangddang.domain.enums.*;
+import com.demoday.ddangddangddang.domain.event.WinEvent;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.third.*;
 import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
@@ -13,6 +14,7 @@ import com.demoday.ddangddangddang.service.ChatGptService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,7 @@ public class FinalJudgeService {
     private final ArgumentInitialRepository argumentInitialRepository;
     private final VoteRepository voteRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 1. [ReadOnly Transaction] 판결에 필요한 데이터를 미리 조회
@@ -119,13 +122,15 @@ public class FinalJudgeService {
             User user = caseParticipation.getUser();
             List<ArgumentInitial> argumentInitials = argumentInitialRepository.findByaCaseAndUser(foundCase, user);
 
+            //유저가 한 사건에 대해 발행한 초기 의견이 1개 이상이면 솔로모드이므로 break;
             if (argumentInitials.size() > 1) {
                 caseParticipation.updateResult(CaseResult.SOLO);
-                continue;
+                break;
             }
             for (ArgumentInitial argumentInitial : argumentInitials) {
                 if (argumentInitial.getType() == winSide) {
                     caseParticipation.updateResult(CaseResult.WIN);
+                    eventPublisher.publishEvent(new WinEvent(user));
                     caseParticipation.getUser().updateExp(150L);
                 } else if (winSide == DebateSide.DRAW) {
                     caseParticipation.updateResult(CaseResult.DRAW);
@@ -140,6 +145,7 @@ public class FinalJudgeService {
             if (adoptDefense.getType() == winSide) {
                 adoptDefense.updateResult(CaseResult.WIN);
                 adoptDefense.getUser().updateExp(150L);
+                eventPublisher.publishEvent(new WinEvent(adoptDefense.getUser()));
             } else if (winSide == DebateSide.DRAW) {
                 adoptDefense.updateResult(CaseResult.DRAW);
             } else {
@@ -151,6 +157,7 @@ public class FinalJudgeService {
             if (adoptedRebuttal.getType() == winSide) {
                 adoptedRebuttal.updateResult(CaseResult.WIN);
                 adoptedRebuttal.getUser().updateExp(150L);
+                eventPublisher.publishEvent(new WinEvent(adoptedRebuttal.getUser()));
             } else if (winSide == DebateSide.DRAW) {
                 adoptedRebuttal.updateResult(CaseResult.DRAW);
             } else {
