@@ -132,10 +132,12 @@ public class FinalJudgeService {
                     caseParticipation.updateResult(CaseResult.WIN);
                     eventPublisher.publishEvent(new WinEvent(user));
                     caseParticipation.getUser().updateExp(150L);
+                    caseParticipation.getUser().updateWin();
                 } else if (winSide == DebateSide.DRAW) {
                     caseParticipation.updateResult(CaseResult.DRAW);
                 } else {
                     caseParticipation.updateResult(CaseResult.LOSE);
+                    caseParticipation.getUser().updateLose();
                 }
             }
         }
@@ -145,11 +147,13 @@ public class FinalJudgeService {
             if (adoptDefense.getType() == winSide) {
                 adoptDefense.updateResult(CaseResult.WIN);
                 adoptDefense.getUser().updateExp(150L);
+                adoptDefense.getUser().updateWin();
                 eventPublisher.publishEvent(new WinEvent(adoptDefense.getUser()));
             } else if (winSide == DebateSide.DRAW) {
                 adoptDefense.updateResult(CaseResult.DRAW);
             } else {
                 adoptDefense.updateResult(CaseResult.LOSE);
+                adoptDefense.getUser().updateLose();
             }
         }
 
@@ -157,11 +161,13 @@ public class FinalJudgeService {
             if (adoptedRebuttal.getType() == winSide) {
                 adoptedRebuttal.updateResult(CaseResult.WIN);
                 adoptedRebuttal.getUser().updateExp(150L);
+                adoptedRebuttal.getUser().updateWin();
                 eventPublisher.publishEvent(new WinEvent(adoptedRebuttal.getUser()));
             } else if (winSide == DebateSide.DRAW) {
                 adoptedRebuttal.updateResult(CaseResult.DRAW);
             } else {
                 adoptedRebuttal.updateResult(CaseResult.LOSE);
+                adoptedRebuttal.getUser().updateLose();
             }
         }
 
