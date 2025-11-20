@@ -36,6 +36,7 @@ public class CaseDetailResponseDto {
         this.status = aCase.getStatus();
         this.mode = aCase.getMode();
         this.argumentA = new ArgumentDetailDto(argA);
-        this.argumentB = new ArgumentDetailDto(argB);
+        // [수정] argB가 null이면 field도 null로 설정 (VS 모드 대기 상태 대응)
+        this.argumentB = (argB != null) ? new ArgumentDetailDto(argB) : null;
     }
 }
