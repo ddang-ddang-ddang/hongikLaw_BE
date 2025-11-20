@@ -28,14 +28,14 @@ public class ReportService {
     private final RebuttalRepository rebuttalRepository;
     private final SlackNotificationService slackNotificationService;
 
-    private static final int BLIND_THRESHOLD = 5; // 신고 임계값=5
+    private static final int BLIND_THRESHOLD = 3; // 신고 임계값=3
 
     public void createReport(Long userId, ReportRequestDto requestDto) {
         User reporter = userRepository.findById(userId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
 
-        // 1. 콘텐츠 존재 여부 확인
-        validateContentExists(requestDto.getContentId(), requestDto.getContentType());
+        // 1. 콘텐츠 존재 여부 확인 및 내용 조회
+        String reportedContent = getReportedContent(requestDto.getContentId(), requestDto.getContentType());
 
         // 2. 중복 신고 확인
         if (reportRepository.existsByReporterAndContentIdAndContentType(reporter, requestDto.getContentId(), requestDto.getContentType())) {
@@ -51,13 +51,39 @@ public class ReportService {
                 .customReason(requestDto.getCustomReason())
                 .build();
 
-        Report savedReport = reportRepository.save(report); // 저장된 엔티티 사용
+        Report savedReport = reportRepository.save(report);
 
-        // ⭐️ 4. Slack 알림 전송 (비동기)
-        slackNotificationService.sendReportNotification(savedReport, reporter.getNickname());
+        // 4. 현재 누적 신고 횟수 조회 (방금 저장한 것 포함)
+        long currentReportCount = reportRepository.countByContentIdAndContentType(requestDto.getContentId(), requestDto.getContentType());
 
-        // 5. 누적 신고 횟수 확인 및 BLIND 처리
-        processBlindStatus(requestDto.getContentId(), requestDto.getContentType());
+        // 5. Slack 알림 전송 (내용 및 카운트 포함)
+        slackNotificationService.sendReportNotification(savedReport, reporter.getNickname(), reportedContent, currentReportCount);
+
+        // 6. 누적 신고 횟수 확인 및 BLIND 처리
+        processBlindStatus(requestDto.getContentId(), requestDto.getContentType(), currentReportCount);
+    }
+
+    /**
+     * [추가] 운영자용: 허위 신고 삭제 (신고 취소)
+     * 신고를 삭제하고, 신고 횟수가 임계값 미만으로 떨어지면 블라인드를 해제합니다.
+     */
+    public void deleteReport(Long reportId) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "존재하지 않는 신고입니다."));
+
+        Long contentId = report.getContentId();
+        ContentType contentType = report.getContentType();
+
+        // 1. 신고 내역 삭제
+        reportRepository.delete(report);
+
+        // 2. 남은 신고 횟수 조회
+        long currentCount = reportRepository.countByContentIdAndContentType(contentId, contentType);
+
+        // 3. 블라인드 해제 여부 확인 (임계값보다 낮아지면 해제)
+        if (currentCount < BLIND_THRESHOLD) {
+            unblindContent(contentId, contentType);
+        }
     }
 
     private void processBlindStatus(Long contentId, ContentType contentType) {
@@ -80,17 +106,46 @@ public class ReportService {
         }
     }
 
-    private void validateContentExists(Long contentId, ContentType contentType) {
+    // 신고된 콘텐츠의 실제 내용을 가져오는 메서드
+    private String getReportedContent(Long contentId, ContentType contentType) {
         if (contentType == ContentType.DEFENSE) {
-            if (!defenseRepository.existsById(contentId)) {
-                throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "존재하지 않는 변론입니다.");
-            }
+            return defenseRepository.findById(contentId)
+                    .map(Defense::getContent)
+                    .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "존재하지 않는 변론입니다."));
         } else if (contentType == ContentType.REBUTTAL) {
-            if (!rebuttalRepository.existsById(contentId)) {
-                throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "존재하지 않는 반론입니다.");
-            }
+            return rebuttalRepository.findById(contentId)
+                    .map(Rebuttal::getContent)
+                    .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "존재하지 않는 반론입니다."));
         } else {
             throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "잘못된 콘텐츠 타입입니다.");
+        }
+    }
+
+    // 파라미터로 count를 받아서 처리하도록 최적화
+    private void processBlindStatus(Long contentId, ContentType contentType, long reportCount) {
+        if (reportCount >= BLIND_THRESHOLD) {
+            if (contentType == ContentType.DEFENSE) {
+                defenseRepository.findById(contentId).ifPresent(defense -> {
+                    if (!defense.getIsBlind()) {
+                        defense.markAsBlind();
+                    }
+                });
+            } else if (contentType == ContentType.REBUTTAL) {
+                rebuttalRepository.findById(contentId).ifPresent(rebuttal -> {
+                    if (!rebuttal.getIsBlind()) {
+                        rebuttal.markAsBlind();
+                    }
+                });
+            }
+        }
+    }
+
+    // [추가] 블라인드 해제 로직
+    private void unblindContent(Long contentId, ContentType contentType) {
+        if (contentType == ContentType.DEFENSE) {
+            defenseRepository.findById(contentId).ifPresent(Defense::unmarkAsBlind); // Defense 엔티티에 메서드 필요
+        } else if (contentType == ContentType.REBUTTAL) {
+            rebuttalRepository.findById(contentId).ifPresent(Rebuttal::unmarkAsBlind); // Rebuttal 엔티티에 메서드 필요
         }
     }
 }
