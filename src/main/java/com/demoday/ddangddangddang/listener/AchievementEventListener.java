@@ -2,11 +2,13 @@ package com.demoday.ddangddangddang.listener;
 
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.UserAchievement;
+import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.ContentType;
 import com.demoday.ddangddangddang.domain.enums.achieve.AchieveEnum;
 import com.demoday.ddangddangddang.domain.event.CaseCreatedEvent;
 import com.demoday.ddangddangddang.domain.event.CaseParticipationEvent;
 import com.demoday.ddangddangddang.domain.event.PostCreatedEvent;
+import com.demoday.ddangddangddang.domain.event.WinEvent;
 import com.demoday.ddangddangddang.repository.CaseParticipationRepository;
 import com.demoday.ddangddangddang.repository.CaseRepository;
 import com.demoday.ddangddangddang.repository.RebuttalRepository;
@@ -68,6 +70,27 @@ public class AchievementEventListener {
     @EventListener
     @Transactional
     @Async
+    public void handleWin(WinEvent event) {
+        User user = event.getUser();
+
+        // 1. 현재 유저의 승리 횟수 조회
+        Integer winCountCase = caseParticipationRepository.countByUserAndResult(user, CaseResult.WIN);
+        Integer winCountDefense = 0;
+        Integer winCountRebuttal = 0;
+        Integer winCountTotal = winCountCase + winCountDefense + winCountRebuttal;
+
+        // 2. 조건 체크 및 업적 지급
+        if (winCountTotal == 1) {
+            giveAchievement(user, AchieveEnum.FIRST_WIN);
+        }
+        else if (winCountTotal == 10) {
+            giveAchievement(user, AchieveEnum.WIN_10);
+        }
+    }
+
+    @EventListener
+    @Transactional
+    @Async
     public void handlePostCreated(PostCreatedEvent event) {
         User user = event.getUser();
         ContentType contentType = event.getContentType();
@@ -86,9 +109,16 @@ public class AchievementEventListener {
         // 2. 조건 체크 및 업적 지급
         if (defenseCount == 1) {
             giveAchievement(user, AchieveEnum.FIRST_DEFENSE);
+        } else if (defenseCount == 10) {
+            giveAchievement(user,AchieveEnum.DEFENSE_10);
+        } else if (defenseCount == 50) {
+            giveAchievement(user,AchieveEnum.DEFENSE_50);
         }
-        else if(rebuttalCount == 1) {
+
+        if (rebuttalCount == 1) {
             giveAchievement(user, AchieveEnum.FIRST_REBUTTAL);
+        } else if (rebuttalCount == 50) {
+            giveAchievement(user, AchieveEnum.REBUTTAL_50);
         }
     }
 

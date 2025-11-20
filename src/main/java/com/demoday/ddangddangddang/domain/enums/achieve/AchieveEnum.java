@@ -9,16 +9,16 @@ public enum AchieveEnum implements AchieveEnumBase {
 
     FIRST_CASE("첫 사건1", "첫 사건을 생성했을 때 얻습니다.", "first_case.png"),
     FIRST_VS("첫 VS 모드 참여1", "첫 vs 모드에 참여했을 때 얻습니다.", "first_vs.png"),
-    FIRST_DEFENSE("첫 변론", "처음으로 변론에 참여했을 때 얻습니다.", "first_defense.png"),
-    FIRST_REBUTTAL("첫 반론", "처음으로 반론에 참여했을 때 얻습니다.", "first_rebuttal.png"),
+    FIRST_DEFENSE("첫 변론1", "처음으로 변론에 참여했을 때 얻습니다.", "first_defense.png"),
+    FIRST_REBUTTAL("첫 반론1", "처음으로 반론에 참여했을 때 얻습니다.", "first_rebuttal.png"),
     FIRST_WIN("첫 승리", "처음으로 재판에 승리했을 때 얻습니다.", "first_win.png"),
     FIRST_ADOPT("첫 채택", "처음으로 변론/반론이 채택된 경우 얻습니다.", "first_adopt.png"),
     LIKE_50("좋아요 50개 달성", "좋아요 50개를 받았습니다", "like_50.png"),
     LIKE_100("좋아요 100개 달성", "좋아요 100개를 받았습니다.", "like_100.png"),
     CASE_10("재판 10개 생성1", "재판을 10개 생성했습니다.", "case_10.png"),
-    DEFENSE_10("변론 10개 생성", "변론을 10개 생성했습니다.", "defense_10.png"),
-    DEFENSE_50("변론 50개 생성", "변론을 50개 생성했습니다.", "defense_50.png"),
-    REBUTTAL_50("반론 50개 생성", "반론을 50개 생성했습니다.", "rebuttal_50.png"),
+    DEFENSE_10("변론 10개 생성1", "변론을 10개 생성했습니다.", "defense_10.png"),
+    DEFENSE_50("변론 50개 생성1", "변론을 50개 생성했습니다.", "defense_50.png"),
+    REBUTTAL_50("반론 50개 생성1", "반론을 50개 생성했습니다.", "rebuttal_50.png"),
     WIN_10("10승","재판 승리 10회","win_10.png")
     ;
 
