@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.service.mypage;
 
 import com.demoday.ddangddangddang.domain.*;
+import com.demoday.ddangddangddang.domain.enums.achieve.AchieveEnum;
 import com.demoday.ddangddangddang.dto.mypage.RankResponseDto;
 import com.demoday.ddangddangddang.dto.mypage.RecordResponseDto;
 import com.demoday.ddangddangddang.dto.mypage.UserAchievementResponseDto;
@@ -94,15 +95,15 @@ public class MypageService {
 
         List<UserAchievementResponseDto> responseDtos = achievements.stream()
                 .map(userAchievement -> {
-                    Achievement achievement = userAchievement.getAchievement();
+                    AchieveEnum achievement = userAchievement.getAchievement();
 
                     return UserAchievementResponseDto.builder()
-                            .userId(userId) // userAchievement.getUser().getId() 보다 파라미터 사용이 효율적
-                            .achievementId(achievement.getId())
-                            .achievementName(achievement.getTitle())
+                            .userId(userId)
+                            .achievementId(userAchievement.getId())
+                            .achievementName(achievement.getName())
                             .achievementDescription(achievement.getDescription())
                             .achievementIconUrl(achievement.getIconUrl())
-                            .achievementTime(userAchievement.getEarnedAt()) // UserAchievement의 달성 시간 필드 (예: getCreatedAt())
+                            .achievementTime(userAchievement.getEarnedAt())
                             .build();
                 })
                 .collect(Collectors.toList());

@@ -42,10 +42,9 @@ public class FinalJudgeController {
     @PostMapping("/{caseId}")
     public ApiResponse<String> requestJudge(
             @PathVariable Long caseId,
-            @RequestBody FinalJudgmentRequestDto voteDto,
             @AuthenticationPrincipal UserDetailsImpl user) {
         Long userId = user.getUser().getId();
-        return judgeFacade.requestFinalJudge(caseId, voteDto, userId);
+        return judgeFacade.requestFinalJudge(caseId, userId);
     }
 
 //    @PostMapping("/{caseId}")
