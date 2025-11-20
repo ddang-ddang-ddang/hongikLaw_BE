@@ -105,4 +105,12 @@ public class User extends BaseEntity {
     public void updateExp(Long exp){
         this.exp = exp;
     }
+
+    public void updateWin(){
+        this.winCnt++;
+    }
+
+    public void updateLose(){
+        this.loseCnt++;
+    }
 }
