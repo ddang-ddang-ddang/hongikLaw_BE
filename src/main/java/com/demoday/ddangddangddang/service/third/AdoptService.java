@@ -3,6 +3,7 @@ package com.demoday.ddangddangddang.service.third;
 import com.demoday.ddangddangddang.domain.*;
 import com.demoday.ddangddangddang.domain.enums.ContentType;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
+import com.demoday.ddangddangddang.domain.event.AdoptedEvent;
 import com.demoday.ddangddangddang.dto.home.UserDefenseRebuttalResponseDto;
 import com.demoday.ddangddangddang.dto.third.AdoptRequestDto;
 import com.demoday.ddangddangddang.dto.third.AdoptResponseDto;
@@ -13,6 +14,7 @@ import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -28,6 +30,7 @@ public class AdoptService {
     private final DefenseRepository defenseRepository;
     private final UserRepository userRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     //좋아요 많은 순으로 노출 (유저가 채택화면에서 보게 될 선택지)
     public ApiResponse<AdoptResponseDto> getOpinionBest(Long userId, Long caseId) {
@@ -147,6 +150,7 @@ public class AdoptService {
             for (Defense defense : defensesToAdopt) {
                 defense.markAsAdopted();
                 defense.getUser().updateExp(100L);
+                eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(),ContentType.DEFENSE));
             }
         }
 
@@ -160,6 +164,7 @@ public class AdoptService {
             for (Rebuttal rebuttal : rebuttalsToAdopt) {
                 rebuttal.getUser().updateExp(100L);
                 rebuttal.markAsAdopted(); // (Rebuttal 엔티티에는 이미 존재)
+                eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(),ContentType.REBUTTAL));
             }
         }
         return ApiResponse.onSuccess("success","최종심에 반영될 의견 채택 완료");
@@ -246,6 +251,7 @@ public class AdoptService {
                     if (!Boolean.TRUE.equals(defense.getIsAdopted())) {
                         defense.markAsAdopted();
                         defense.getUser().updateExp(100L);
+                        eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(),ContentType.DEFENSE));
                     }
                 });
             } else if (item.getItemType() == ContentType.REBUTTAL) {
@@ -253,6 +259,7 @@ public class AdoptService {
                     if (!Boolean.TRUE.equals(rebuttal.getIsAdopted())) {
                         rebuttal.markAsAdopted();
                         rebuttal.getUser().updateExp(100L);
+                        eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(),ContentType.REBUTTAL));
                     }
                 });
             }

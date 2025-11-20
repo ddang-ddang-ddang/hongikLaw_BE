@@ -1,18 +1,14 @@
 package com.demoday.ddangddangddang.listener;
 
+import com.demoday.ddangddangddang.domain.Defense;
+import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.UserAchievement;
 import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.ContentType;
 import com.demoday.ddangddangddang.domain.enums.achieve.AchieveEnum;
-import com.demoday.ddangddangddang.domain.event.CaseCreatedEvent;
-import com.demoday.ddangddangddang.domain.event.CaseParticipationEvent;
-import com.demoday.ddangddangddang.domain.event.PostCreatedEvent;
-import com.demoday.ddangddangddang.domain.event.WinEvent;
-import com.demoday.ddangddangddang.repository.CaseParticipationRepository;
-import com.demoday.ddangddangddang.repository.CaseRepository;
-import com.demoday.ddangddangddang.repository.RebuttalRepository;
-import com.demoday.ddangddangddang.repository.UserAchievementRepository;
+import com.demoday.ddangddangddang.domain.event.*;
+import com.demoday.ddangddangddang.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -21,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -31,6 +28,8 @@ public class AchievementEventListener {
     private final CaseRepository caseRepository;
     private final CaseParticipationRepository caseParticipationRepository;
     private final RebuttalRepository rebuttalRepository;
+    private final DefenseRepository defenseRepository;
+    private final LikeRepository likeRepository;
 
     /**
      * 사건 생성 이벤트를 수신하여 처리
@@ -75,9 +74,9 @@ public class AchievementEventListener {
 
         // 1. 현재 유저의 승리 횟수 조회
         Integer winCountCase = caseParticipationRepository.countByUserAndResult(user, CaseResult.WIN);
-        Integer winCountDefense = 0;
-        Integer winCountRebuttal = 0;
-        Integer winCountTotal = winCountCase + winCountDefense + winCountRebuttal;
+        Integer winCountDefense = defenseRepository.countByUserAndCaseResult(user,CaseResult.WIN);
+        Integer winCountRebuttal = rebuttalRepository.countByUserAndCaseResult(user,CaseResult.WIN);
+        int winCountTotal = winCountCase + winCountDefense + winCountRebuttal;
 
         // 2. 조건 체크 및 업적 지급
         if (winCountTotal == 1) {
@@ -85,6 +84,22 @@ public class AchievementEventListener {
         }
         else if (winCountTotal == 10) {
             giveAchievement(user, AchieveEnum.WIN_10);
+        }
+    }
+
+    @EventListener
+    @Transactional
+    @Async
+    public void handleAdopted(AdoptedEvent event) {
+        User user = event.getUser();
+        ContentType contentType = event.getContentType();
+
+        Integer defenseAdoptedCount = defenseRepository.countByUserAndIsAdopted(user,true);
+        Integer rebuttalAdoptedCount = rebuttalRepository.countByUserAndIsAdopted(user,true);
+        int totalAdoptedCount = defenseAdoptedCount + rebuttalAdoptedCount;
+
+        if(totalAdoptedCount == 1){
+            giveAchievement(user, AchieveEnum.FIRST_ADOPT);
         }
     }
 
@@ -119,6 +134,23 @@ public class AchievementEventListener {
             giveAchievement(user, AchieveEnum.FIRST_REBUTTAL);
         } else if (rebuttalCount == 50) {
             giveAchievement(user, AchieveEnum.REBUTTAL_50);
+        }
+    }
+
+    @EventListener
+    @Transactional
+    @Async
+    public void handleLiked(LikedEvent event) {
+        User user = event.getUser();
+
+        int defenseLikeCnt = defenseRepository.sumLikesByUser(user);
+        int rebuttalLikeCnt = rebuttalRepository.sumLikesByUser(user);
+        int totalLikeCnt = defenseLikeCnt + rebuttalLikeCnt;
+
+        if (totalLikeCnt == 50) {
+            giveAchievement(user,AchieveEnum.LIKE_50);
+        } else if (totalLikeCnt == 100) {
+            giveAchievement(user,AchieveEnum.LIKE_100);
         }
     }
 
