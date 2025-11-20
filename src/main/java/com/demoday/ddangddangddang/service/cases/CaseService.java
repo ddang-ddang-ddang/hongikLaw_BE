@@ -212,23 +212,24 @@ public class CaseService {
         Case aCase = findCaseById(caseId);
 
         List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
-        if (arguments.size() < 2) {
+        if (arguments.isEmpty()) {
             throw new GeneralException(GeneralErrorCode.INTERNAL_SERVER_ERROR, "데이터 오류: 입장문을 찾을 수 없습니다.");
         }
 
         ArgumentInitial argA = arguments.get(0);
-        ArgumentInitial argB = arguments.get(1);
+        // B측 입장문이 없으면 null로 처리 (PENDING 상태 대응)
+        ArgumentInitial argB = (arguments.size() > 1) ? arguments.get(1) : null;
 
         if (aCase.getMode() == CaseMode.SOLO && !argA.getUser().getId().equals(user.getId())) {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "해당 사건에 대한 조회 권한이 없습니다.");
         }
 
-        rankingService.addCaseScore(caseId, 1.0); // 조회수 증가 로직
+        rankingService.addCaseScore(caseId, 1.0);
 
         return CaseDetailResponseDto.builder()
                 .aCase(aCase)
                 .argA(argA)
-                .argB(argB)
+                .argB(argB) // null이 들어갈 수 있음
                 .build();
     }
 
