@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.domain;
 
+import com.demoday.ddangddangddang.domain.enums.achieve.AchieveEnum;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,15 +25,15 @@ public class UserAchievement {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "achievement_id", nullable = false)
-    private Achievement achievement;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "achievement", nullable = false)
+    private AchieveEnum achievement;
 
     @Column(name = "earned_at", nullable = false, updatable = false)
     private LocalDateTime earnedAt;
 
     @Builder
-    public UserAchievement(User user, Achievement achievement) {
+    public UserAchievement(User user, AchieveEnum achievement) {
         this.user = user;
         this.achievement = achievement;
         this.earnedAt = LocalDateTime.now();
