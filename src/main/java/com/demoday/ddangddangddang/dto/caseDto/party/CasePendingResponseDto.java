@@ -4,6 +4,7 @@ import com.demoday.ddangddangddang.domain.ArgumentInitial;
 import com.demoday.ddangddangddang.domain.Case;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 
@@ -12,6 +13,7 @@ public class CasePendingResponseDto {
     private Long caseId;
     private String title;
     private String argumentAMain;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Seoul")
     private LocalDateTime createdAt; // 등록 시간
 
     public CasePendingResponseDto(Case aCase, ArgumentInitial argumentA) {
