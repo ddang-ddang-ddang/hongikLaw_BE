@@ -16,13 +16,15 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "notice controller", description = "알림 관련 컨트롤러 -by 황신애")
+@Tag(name = "Notice API", description = "알림 관련 컨트롤러 -by 황신애")
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
     private final SseEmitters sseEmitters;
 
     // 클라이언트에서 EventSource로 연결할 엔드포인트
+    @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @SecurityRequirement(name = "JWT TOKEN")
     @Operation(summary = "알림 구독", description = "알림을 전송합니다")
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @SecurityRequirement(name = "JWT TOKEN")

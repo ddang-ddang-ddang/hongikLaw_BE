@@ -109,16 +109,24 @@ public class SseEmitters {
 
     // 특정 유저에게 알림 전송
     public void sendNotification(Long userId, String eventName, String message) {
+        log.info("알림 전송 시도 - Target UserId: {}, Event: {}", userId, eventName); // [1] 진입 로그
+
         SseEmitter emitter = this.userEmitters.get(userId);
+
         if (emitter != null) {
             try {
                 emitter.send(SseEmitter.event()
-                        .name(eventName) // 예: "new_participant", "new_rebuttal"
+                        .name(eventName)
                         .data(message));
+                log.info("알림 전송 성공 - UserId: {}", userId); // [2] 성공 로그
             } catch (IOException e) {
                 this.userEmitters.remove(userId);
-                log.error("SSE Notification Send Error: userId={}", userId);
+                log.error("알림 전송 실패 (IO Exception) - UserId: {}", userId, e);
             }
+        } else {
+            // [3] 여기서 걸릴 확률이 높습니다.
+            log.warn("알림 전송 실패 - 접속중인 유저를 찾을 수 없음 (Emitter Null) - UserId: {}", userId);
+            log.info("현재 접속중인 유저 목록(Keys): {}", userEmitters.keySet()); // 현재 맵에 누가 있는지 확인
         }
     }
 
