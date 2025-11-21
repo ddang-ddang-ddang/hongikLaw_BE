@@ -18,4 +18,5 @@ public class CaseSimpleDto {
     private Long caseId;
     private String title;
     private List<String> mainArguments;
+    private Integer participateCnt;
 }
