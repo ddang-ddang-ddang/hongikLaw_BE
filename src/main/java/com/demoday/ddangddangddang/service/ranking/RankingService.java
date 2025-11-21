@@ -104,11 +104,13 @@ public class RankingService {
                     // Map에서 해당 Case의 arguments 리스트를 찾음 (없으면 빈 리스트)
                     List<String> mainArguments = argumentsMap.getOrDefault(aCase.getId(), Collections.emptyList());
 
-                    // CaseSimpleDto의 @Builder 사용
+                    int distinctCount = caseRepository.countDistinctParticipants(aCase.getId());
+
                     return CaseSimpleDto.builder()
                             .caseId(aCase.getId())
                             .title(aCase.getTitle())
                             .mainArguments(mainArguments)
+                            .participateCnt(distinctCount)
                             .build();
                 })
                 .collect(Collectors.toList());
