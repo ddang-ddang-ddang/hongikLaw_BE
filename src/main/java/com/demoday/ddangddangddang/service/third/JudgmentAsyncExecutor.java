@@ -2,6 +2,7 @@ package com.demoday.ddangddangddang.service.third;
 
 import com.demoday.ddangddangddang.domain.CaseParticipation;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
+import com.demoday.ddangddangddang.dto.notice.NotificationResponseDto;
 import com.demoday.ddangddangddang.dto.third.JudgeContextDto;
 import com.demoday.ddangddangddang.dto.third.FinalJudgmentRequestDto;
 import com.demoday.ddangddangddang.global.sse.SseEmitters;
@@ -50,11 +51,15 @@ public class JudgmentAsyncExecutor {
             for (CaseParticipation participation : participants) {
                 Long userId = participation.getUser().getId();
 
+                NotificationResponseDto dto = NotificationResponseDto.builder()
+                        .message(String.valueOf(judgmentId))
+                        .iconUrl("https://ddangddangddang-demoday.s3.ap-northeast-2.amazonaws.com/icons/gavel.png")
+                        .build();
                 // 유저별 연결에 'judgment_complete' 이벤트 전송
                 sseEmitters.sendNotification(
                         userId,
                         "judgment_complete",
-                        String.valueOf(judgmentId) // 데이터로 판결문 ID 전송
+                       dto // 데이터로 판결문 ID 전송
                 );
             }
 
@@ -62,7 +67,11 @@ public class JudgmentAsyncExecutor {
                 // 에러 알림도 동일하게 참여자들에게 전송
                 List<CaseParticipation> participant = caseParticipationRepository.findByaCase(context.getACase());
                 for (CaseParticipation p : participant) {
-                    sseEmitters.sendNotification(p.getUser().getId(), "judgment_error", "판결 생성 중 오류가 발생했습니다.");
+                    NotificationResponseDto dto = NotificationResponseDto.builder()
+                            .message("판결 생성 중 오류가 발생했습니다.")
+                            .build();
+
+                    sseEmitters.sendNotification(p.getUser().getId(), "judgment_error", dto);
             }
         }
     }

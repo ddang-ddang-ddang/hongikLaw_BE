@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.global.sse;
 
+import com.demoday.ddangddangddang.dto.notice.NotificationResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -108,7 +109,7 @@ public class SseEmitters {
     }
 
     // 특정 유저에게 알림 전송
-    public void sendNotification(Long userId, String eventName, String message) {
+    public void sendNotification(Long userId, String eventName, NotificationResponseDto dto) {
         log.info("알림 전송 시도 - Target UserId: {}, Event: {}", userId, eventName); // [1] 진입 로그
 
         SseEmitter emitter = this.userEmitters.get(userId);
@@ -117,7 +118,7 @@ public class SseEmitters {
             try {
                 emitter.send(SseEmitter.event()
                         .name(eventName)
-                        .data(message));
+                        .data(dto));
                 log.info("알림 전송 성공 - UserId: {}", userId); // [2] 성공 로그
             } catch (IOException e) {
                 this.userEmitters.remove(userId);
