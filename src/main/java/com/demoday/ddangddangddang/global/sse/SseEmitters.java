@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.global.sse;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -76,23 +77,31 @@ public class SseEmitters {
 
     // 유저가 로그인 후 알림을 구독할 때 호출
     public SseEmitter connectUser(Long userId) {
-        // 타임아웃: 1시간 (필요에 따라 조정)
+        // 타임아웃을 1시간(60분)으로 설정
         SseEmitter emitter = new SseEmitter(60 * 1000L * 60);
         this.userEmitters.put(userId, emitter);
         log.info("SSE Connected User: userId={}", userId);
 
+        // 완료 및 타임아웃 시 리스트에서 제거
         emitter.onCompletion(() -> this.userEmitters.remove(userId));
         emitter.onTimeout(() -> {
             emitter.complete();
             this.userEmitters.remove(userId);
         });
-        emitter.onError((e) -> this.userEmitters.remove(userId));
+        emitter.onError((e) -> {
+            log.error("SSE Connection Error for user {}: {}", userId, e.getMessage()); // 로그 강화
+            this.userEmitters.remove(userId);
+        });
 
-        // 연결 확인용 더미 데이터 전송 (연결 즉시 안 보내면 타임아웃 나는 브라우저 이슈 방지)
+        // [중요] 503 Service Unavailable 방지를 위한 더미 데이터 즉시 전송
         try {
-            emitter.send(SseEmitter.event().name("connect").data("connected!"));
+            emitter.send(SseEmitter.event()
+                    .name("connect")
+                    .data("connected!"));
         } catch (IOException e) {
-            log.error("SSE Connect Error", e);
+            log.error("SSE Initial Send Error", e);
+            // 초기 전송 실패 시 이미 망가진 연결이므로 제거
+            this.userEmitters.remove(userId);
         }
 
         return emitter;
@@ -111,5 +120,19 @@ public class SseEmitters {
                 log.error("SSE Notification Send Error: userId={}", userId);
             }
         }
+    }
+
+    @Scheduled(fixedRate = 45000) // 45초마다 실행 (60초 타임아웃 방지)
+    public void sendHeartbeat() {
+        userEmitters.forEach((userId, emitter) -> {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("heartbeat")
+                        .data("keep-alive"));
+            } catch (IOException e) {
+                // 전송 실패 시(클라이언트가 이미 떠남) 제거
+                userEmitters.remove(userId);
+            }
+        });
     }
 }

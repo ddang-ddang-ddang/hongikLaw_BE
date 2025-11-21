@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,9 +24,12 @@ public class NotificationController {
 
     // 클라이언트에서 EventSource로 연결할 엔드포인트
     @Operation(summary = "알림 구독", description = "알림을 전송합니다")
-    @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @SecurityRequirement(name = "JWT TOKEN")
-    public SseEmitter subscribe(@AuthenticationPrincipal UserDetailsImpl userDetails) {
-        return sseEmitters.connectUser(userDetails.getUser().getId());
+    public ResponseEntity<SseEmitter> subscribe(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        SseEmitter emitter = sseEmitters.connectUser(userDetails.getUser().getId());
+
+        return ResponseEntity.ok()
+                .header("X-Accel-Buffering", "no") // Nginx 버퍼링 방지 (중요!)
+                .header("Connection", "keep-alive") // 연결 유지
+                .body(emitter);
     }
 }
