@@ -124,7 +124,6 @@ public class SseEmitters {
                 log.error("알림 전송 실패 (IO Exception) - UserId: {}", userId, e);
             }
         } else {
-            // [3] 여기서 걸릴 확률이 높습니다.
             log.warn("알림 전송 실패 - 접속중인 유저를 찾을 수 없음 (Emitter Null) - UserId: {}", userId);
             log.info("현재 접속중인 유저 목록(Keys): {}", userEmitters.keySet()); // 현재 맵에 누가 있는지 확인
         }
