@@ -24,6 +24,8 @@ public class NotificationController {
 
     // 클라이언트에서 EventSource로 연결할 엔드포인트
     @Operation(summary = "알림 구독", description = "알림을 전송합니다")
+    @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @SecurityRequirement(name = "JWT TOKEN")
     public ResponseEntity<SseEmitter> subscribe(@AuthenticationPrincipal UserDetailsImpl userDetails) {
         SseEmitter emitter = sseEmitters.connectUser(userDetails.getUser().getId());
 
