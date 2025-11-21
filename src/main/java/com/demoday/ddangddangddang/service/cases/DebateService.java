@@ -6,6 +6,7 @@ import com.demoday.ddangddangddang.domain.event.PostCreatedEvent;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.second.*;
 import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
+import com.demoday.ddangddangddang.dto.notice.NotificationResponseDto;
 import com.demoday.ddangddangddang.dto.third.AdoptableItemDto;
 import com.demoday.ddangddangddang.dto.third.JudgementBasisDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
@@ -254,7 +255,16 @@ public class DebateService {
             Long targetUserId = parentRebuttal.getUser().getId();
             // 본인이 본인 글에 단 경우는 알림 제외
             if (!targetUserId.equals(user.getId())) {
-                sseEmitters.sendNotification(targetUserId, "notification", "내 반론에 새로운 대댓글이 달렸습니다.");
+                NotificationResponseDto dto = NotificationResponseDto.builder()
+                        .message("내 반론에 새로운 대댓글이 달렸습니다.")
+                        .caseId(rebuttal.getDefense().getACase().getId())
+                        .defenseId(rebuttal.getDefense().getId())
+                        .parentId(parentRebuttal.getId())
+                        .rebuttalId(rebuttal.getId())
+                        .iconUrl("https://ddangddangddang-demoday.s3.ap-northeast-2.amazonaws.com/icons/versus.png")
+                        .build();
+
+                sseEmitters.sendNotification(targetUserId, "notification", dto);
             }
         }
         // 2. 일반 반론(댓글)인 경우 -> 변론(게시글) 작성자에게 알림
@@ -262,7 +272,16 @@ public class DebateService {
             Long targetUserId = defense.getUser().getId();
             // 본인이 본인 변론에 댓글 단 경우 제외
             if (!targetUserId.equals(user.getId())) {
-                sseEmitters.sendNotification(targetUserId, "notification", "내 변론에 새로운 반론이 달렸습니다.");
+                NotificationResponseDto dto = NotificationResponseDto.builder()
+                        .message("내 변론에 새로운 반론이 달렸습니다.")
+                        .caseId(rebuttal.getDefense().getACase().getId())
+                        .defenseId(rebuttal.getDefense().getId())
+                        .parentId(null)
+                        .rebuttalId(rebuttal.getId())
+                        .iconUrl("https://ddangddangddang-demoday.s3.ap-northeast-2.amazonaws.com/icons/versus.png")
+                        .build();
+
+                sseEmitters.sendNotification(targetUserId, "notification", dto);
             }
         }
 

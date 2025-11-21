@@ -8,6 +8,7 @@ import com.demoday.ddangddangddang.domain.event.CaseParticipationEvent;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.*;
 import com.demoday.ddangddangddang.dto.caseDto.party.CasePendingResponseDto;
+import com.demoday.ddangddangddang.dto.notice.NotificationResponseDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.global.sse.SseEmitters;
@@ -202,8 +203,14 @@ public class CaseService {
             List<ArgumentInitial> allArguments = List.of(firstArgument, argument);
             Long hostUserId = firstArgument.getUser().getId(); // 방장(A) ID
 
+            NotificationResponseDto dto = NotificationResponseDto.builder()
+                    .message("상대방이 입장하여 1차 재판이 시작됩니다!")
+                    .caseId(aCase.getId())
+                    .iconUrl("https://ddangddangddang-demoday.s3.ap-northeast-2.amazonaws.com/noti/person.png")
+                    .build();
+
             // A에게 알림 전송
-            sseEmitters.sendNotification(hostUserId, "notification", "상대방이 입장하여 1차 재판이 시작됩니다!");
+            sseEmitters.sendNotification(hostUserId, "notification", dto);
 
             // AI 1차 판결 요청
             AiJudgmentDto aiResult = chatGptService.getAiJudgment(aCase, allArguments);
