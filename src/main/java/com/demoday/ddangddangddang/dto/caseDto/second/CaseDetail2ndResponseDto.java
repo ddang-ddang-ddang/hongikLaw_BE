@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.dto.caseDto.second;
 
+import com.demoday.ddangddangddang.domain.ArgumentInitial;
 import com.demoday.ddangddangddang.domain.Case;
 import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Judgment;
@@ -24,6 +25,9 @@ public class CaseDetail2ndResponseDto {
     private List<DefenseDto> defenses;
     private VoteDto userVote; // 내가 투표한 정보 (투표 안했으면 null)
     private JudgmentResponseDto currentJudgment; // [수정] 실시간 AI 판결 결과
+
+    private ArgumentDetailDto argumentA;
+    private ArgumentDetailDto argumentB;
 
     @Getter
     @Builder
@@ -56,6 +60,23 @@ public class CaseDetail2ndResponseDto {
         private DebateSide choice;
     }
 
+    // 입장문 DTO
+    @Getter
+    @Builder
+    public static class ArgumentDetailDto {
+        private String mainArgument;
+        private String reasoning;
+        private Long authorId;
+
+        public static ArgumentDetailDto fromEntity(ArgumentInitial arg) {
+            return ArgumentDetailDto.builder()
+                    .mainArgument(arg.getMainArgument())
+                    .reasoning(arg.getReasoning())
+                    .authorId(arg.getUser().getId())
+                    .build();
+        }
+    }
+
     // 엔티티 리스트를 DTO 리스트로 변환하는 정적 팩토리 메서드
     public static CaseDetail2ndResponseDto fromEntities(
             Case aCase,
@@ -64,7 +85,10 @@ public class CaseDetail2ndResponseDto {
             Vote userVote,
             Judgment finalJudgment, // [추가] AI 판결
             Set<Long> userLikedDefenseIds,
-            Set<Long> userLikedRebuttalIds)
+            Set<Long> userLikedRebuttalIds,
+            ArgumentInitial argA,
+            ArgumentInitial argB
+            )
     {
         // 1. 모든 반론 DTO 생성
         Map<Long, RebuttalDto> rebuttalDtoMap = rebuttalList.stream()
@@ -118,7 +142,9 @@ public class CaseDetail2ndResponseDto {
                 .deadline(aCase.getAppealDeadline())
                 .defenses(defenseDtos)
                 .userVote(userVote != null ? VoteDto.builder().choice(userVote.getType()).build() : null)
-                .currentJudgment(finalJudgment != null ? new JudgmentResponseDto(finalJudgment) : null) // [수정]
+                .currentJudgment(finalJudgment != null ? new JudgmentResponseDto(finalJudgment) : null)
+                .argumentA(argA != null ? ArgumentDetailDto.fromEntity(argA) : null)
+                .argumentB(argB != null ? ArgumentDetailDto.fromEntity(argB) : null)
                 .build();
     }
 }
