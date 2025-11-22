@@ -34,6 +34,7 @@ public class CaseDetail2ndResponseDto {
     public static class DefenseDto {
         private Long defenseId;
         private String authorNickname;
+        private String authorRank;
         private DebateSide side;
         private String content;
         private Integer likesCount;
@@ -47,6 +48,7 @@ public class CaseDetail2ndResponseDto {
         private Long rebuttalId;
         private Long parentId; // 부모 반론 ID (대댓글용)
         private String authorNickname;
+        private String authorRank;
         private DebateSide type;
         private String content;
         private Integer likesCount;
@@ -96,6 +98,7 @@ public class CaseDetail2ndResponseDto {
                         .rebuttalId(rebuttal.getId())
                         .parentId(rebuttal.getParent() != null ? rebuttal.getParent().getId() : null)
                         .authorNickname(rebuttal.getUser().getNickname())
+                        .authorRank(rebuttal.getUser().getRank().getDisplayName())
                         .type(rebuttal.getType())
                         .content(rebuttal.getContent())
                         .likesCount(rebuttal.getLikesCount())
@@ -127,6 +130,7 @@ public class CaseDetail2ndResponseDto {
                 .map(defense -> DefenseDto.builder()
                         .defenseId(defense.getId())
                         .authorNickname(defense.getUser().getNickname())
+                        .authorRank(defense.getUser().getRank().getDisplayName())
                         .side(defense.getType())
                         .content(defense.getContent())
                         .likesCount(defense.getLikesCount())

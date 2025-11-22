@@ -17,6 +17,7 @@ public class RebuttalResponseDto {
     private Long rebuttalId;
     private Long parentId; // 부모 반론 ID (대댓글용)
     private String authorNickname;
+    private String authorRank;
     private DebateSide type;
     private String content;
     private Integer likesCount;
@@ -32,6 +33,7 @@ public class RebuttalResponseDto {
                         .rebuttalId(rebuttal.getId())
                         .parentId(rebuttal.getParent() != null ? rebuttal.getParent().getId() : null)
                         .authorNickname(rebuttal.getUser().getNickname())
+                        .authorRank(rebuttal.getUser().getRank().getDisplayName())
                         .type(rebuttal.getType())
                         .content(rebuttal.getContent())
                         .likesCount(rebuttal.getLikesCount())
