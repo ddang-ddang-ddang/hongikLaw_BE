@@ -474,7 +474,7 @@ public class FinalJudgeService {
                 .orElseThrow(()-> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND,"존재하지 않는 사건입니다."));
 
         ShowJudgeStatus status;
-        int count = judgmentRepository.countByaCase_Id(caseId);
+        int count = judgmentRepository.countByaCase_IdAndStage(caseId,JudgmentStage.FINAL);
         if(count > 1){
             status = ShowJudgeStatus.AFTER;
         }
