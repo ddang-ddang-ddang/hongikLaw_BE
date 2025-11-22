@@ -2,6 +2,7 @@ package com.demoday.ddangddangddang.service.ranking;
 
 import com.demoday.ddangddangddang.domain.ArgumentInitial;
 import com.demoday.ddangddangddang.domain.Case;
+import com.demoday.ddangddangddang.domain.enums.CaseStatus;
 import com.demoday.ddangddangddang.dto.home.CaseSimpleDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.repository.ArgumentInitialRepository;
@@ -75,8 +76,12 @@ public class RankingService {
                 .map(Long::parseLong)
                 .collect(Collectors.toList());
 
+        Collection<CaseStatus> statuses = new HashSet<>();
+        statuses.add(CaseStatus.THIRD);
+        statuses.add(CaseStatus.SECOND);
+
         // 3. DB에서 ID 목록에 해당하는 Case 정보 조회 (1번 쿼리)
-        List<Case> hotCasesFromDb = caseRepository.findAllById(hotCaseIds);
+        List<Case> hotCasesFromDb = caseRepository.findAllByIdInAndStatusIn(hotCaseIds,statuses);
 
         // 4. Map으로 변환 (Key: caseId, Value: Case 객체)
         Map<Long, Case> caseMap = hotCasesFromDb.stream()
@@ -100,6 +105,7 @@ public class RankingService {
 
         // 8. 랭킹 순서(orderedCases)대로 DTO 빌드
         List<CaseSimpleDto> orderedHotCases = orderedCases.stream()
+                .limit(10)
                 .map(aCase -> {
                     // Map에서 해당 Case의 arguments 리스트를 찾음 (없으면 빈 리스트)
                     List<String> mainArguments = argumentsMap.getOrDefault(aCase.getId(), Collections.emptyList());

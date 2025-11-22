@@ -20,7 +20,7 @@ public class AdoptAutoScheduler {
     private final CaseRepository caseRepository;
 
     //매일 자정마다 투표기간이 끝난지 1일이 지난 사건들을 third로 바꾸고 자동채택
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 30 23 * * *")
     public void autoAdoptScheduled(){
         LocalDateTime oneDayAgo = LocalDateTime.now().minusDays(1);
         List<Case> cases = caseRepository.findByAppealDeadlineBeforeAndStatus(oneDayAgo, CaseStatus.SECOND);
