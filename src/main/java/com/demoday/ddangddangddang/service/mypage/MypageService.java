@@ -14,7 +14,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,24 +57,34 @@ public class MypageService {
 
     public ApiResponse<List<UserArchiveResponseDto>> getUserCases (Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(()->new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
 
+        // 1. 참여 기록 조회
         List<CaseParticipation> participations = caseParticipationRepository.findByUser(user);
 
+        // 2. 참여한 모든 Case 추출
+        List<Case> cases = participations.stream()
+                .map(CaseParticipation::getACase)
+                .toList();
+
+        // 3. [최적화] 모든 Case의 입장문을 '한 번의 쿼리'로 조회 (IN 절 사용)
+        List<ArgumentInitial> allArguments = argumentInitialRepository.findByaCaseInOrderByTypeAsc(cases);
+
+        // 4. 조립을 위해 CaseId를 키(Key)로 하는 Map으로 변환
+        Map<Long, List<String>> argumentsMap = allArguments.stream()
+                .collect(Collectors.groupingBy(
+                        arg -> arg.getACase().getId(),
+                        Collectors.mapping(ArgumentInitial::getMainArgument, Collectors.toList())
+                ));
+
+        // 5. DTO 변환 (이제 반복문 안에서 DB 조회를 하지 않음)
         List<UserArchiveResponseDto> responseDtos = participations.stream()
                 .map(participation -> {
-                    //각 참여 기록에서 Case 객체를 가져옴
                     Case aCase = participation.getACase();
 
-                    //해당 Case에 속한 모든 초기 의견들을 조회
-                    List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+                    // Map에서 꺼내 쓰기 (DB 조회 X)
+                    List<String> mainArguments = argumentsMap.getOrDefault(aCase.getId(), Collections.emptyList());
 
-                    //초기 의견 객체 리스트에서 'mainArgument' 문자열만 추출하여 새로운 리스트 생성
-                    List<String> mainArguments = arguments.stream()
-                            .map(ArgumentInitial::getMainArgument)
-                            .collect(Collectors.toList());
-
-                    // 모은 정보들을 사용하여 DTO를 생성
                     return UserArchiveResponseDto.builder()
                             .caseId(aCase.getId())
                             .title(aCase.getTitle())
@@ -83,7 +95,7 @@ public class MypageService {
                 })
                 .collect(Collectors.toList());
 
-        return ApiResponse.onSuccess("유저 사건 리스트 조회 성공",responseDtos);
+        return ApiResponse.onSuccess("유저 사건 리스트 조회 성공", responseDtos);
     }
 
     //업적 조회
