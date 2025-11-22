@@ -141,8 +141,8 @@ public class AdoptService {
         DebateSide mySide = userInitialArgument.getType();
 
         // 1. 기존 채택 내역 조회 (내 진영)
-        List<Defense> alreadyAdoptedDefenses = defenseRepository.findAllByACase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
-        List<Rebuttal> alreadyAdoptedRebuttals = rebuttalRepository.findAllByDefense_ACase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
+        List<Defense> alreadyAdoptedDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
+        List<Rebuttal> alreadyAdoptedRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
 
         // ★ 핵심 로직: 기존에 하나라도 채택된 게 있었다면, 이번 요청은 '수정'이다.
         boolean isEditMode = (!alreadyAdoptedDefenses.isEmpty() || !alreadyAdoptedRebuttals.isEmpty());
