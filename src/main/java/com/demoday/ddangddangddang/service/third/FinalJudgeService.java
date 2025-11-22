@@ -469,6 +469,19 @@ public class FinalJudgeService {
         judgmentRepository.save(snapshotJudgment);
     }
 
+    public ApiResponse<ShowJudgeStatus> getJudgeStatus(Long caseId){
+        Case aCase = caseRepository.findById(caseId)
+                .orElseThrow(()-> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND,"존재하지 않는 사건입니다."));
+
+        ShowJudgeStatus status;
+        int count = judgmentRepository.countByaCase_Id(caseId);
+        if(count > 1){
+            status = ShowJudgeStatus.AFTER;
+        }
+        else status = ShowJudgeStatus.BEFORE;
+
+        return ApiResponse.onSuccess("현재 최종판결 상태 조회 완료", status);
+    }
 
 
 }
