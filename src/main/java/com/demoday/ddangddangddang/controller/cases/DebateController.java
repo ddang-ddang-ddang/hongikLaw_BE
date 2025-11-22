@@ -82,7 +82,11 @@ public class DebateController {
             @PathVariable Long caseId,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        List<DefenseResponseDto> responseDto = debateService.getDefensesByCase(caseId, userDetails.getUser());
+        // 비로그인(null) 처리 추가
+        com.demoday.ddangddangddang.domain.User user = (userDetails != null) ? userDetails.getUser() : null;
+
+        // user 객체 전달
+        List<DefenseResponseDto> responseDto = debateService.getDefensesByCase(caseId, user);
         return ResponseEntity.ok(ApiResponse.onSuccess("변론 목록 조회에 성공하였습니다.", responseDto));
     }
 
@@ -92,7 +96,11 @@ public class DebateController {
             @PathVariable Long defenseId,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        List<RebuttalResponseDto> responseDto = debateService.getRebuttalsByDefense(defenseId, userDetails.getUser());
+        // 비로그인(null) 처리 추가
+        com.demoday.ddangddangddang.domain.User user = (userDetails != null) ? userDetails.getUser() : null;
+
+        // user 객체 전달
+        List<RebuttalResponseDto> responseDto = debateService.getRebuttalsByDefense(defenseId, user);
         return ResponseEntity.ok(ApiResponse.onSuccess("반론 목록 조회에 성공하였습니다.", responseDto));
     }
 
