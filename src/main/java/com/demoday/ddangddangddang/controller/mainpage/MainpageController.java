@@ -32,7 +32,7 @@ public class MainpageController {
     private final MainpageService mainpageService;
     private final RankingService rankingService;
 
-    private final static int topN = 10;
+    private final static int topN = 15;
 
     @Operation(summary = "유저의 진행중인 재판 조회", description = "로그인한 유저가 참여하고 있는 진행중인 재판 목록을 조회합니다.")
     @ApiResponses(value = {

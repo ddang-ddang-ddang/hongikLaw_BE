@@ -58,4 +58,6 @@ public interface DefenseRepository extends JpaRepository<Defense,Long>{
 
     @Query("SELECT COALESCE(SUM(d.likesCount), 0) FROM Defense d WHERE d.user = :user")
     Integer sumLikesByUser(@Param("user") User user);
+
+    List<Defense> findAllByACase_IdAndTypeAndIsAdoptedTrue(Long caseId, DebateSide type);
 }

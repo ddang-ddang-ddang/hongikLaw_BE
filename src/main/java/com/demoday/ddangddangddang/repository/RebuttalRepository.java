@@ -59,4 +59,6 @@ public interface RebuttalRepository extends JpaRepository<Rebuttal, Long> {
 
     @Query("SELECT COALESCE(SUM(r.likesCount), 0) FROM Rebuttal r WHERE r.user = :user")
     Integer sumLikesByUser(@Param("user") User user);
+
+    List<Rebuttal> findAllByDefense_ACase_IdAndTypeAndIsAdoptedTrue(Long caseId, DebateSide type);
 }

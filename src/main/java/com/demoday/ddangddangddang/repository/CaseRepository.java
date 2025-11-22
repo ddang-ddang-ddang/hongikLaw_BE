@@ -3,12 +3,14 @@ package com.demoday.ddangddangddang.repository;
 import com.demoday.ddangddangddang.domain.Case;
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.enums.CaseStatus;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -37,5 +39,5 @@ public interface CaseRepository extends JpaRepository<Case,Long> {
             "         AND l.contentId IN (SELECT r.id FROM Rebuttal r JOIN r.defense d WHERE d.aCase.id = :caseId))")
     int countDistinctParticipants(@Param("caseId") Long caseId);
 
-    List<Case> findByIdAndStatusNot(Long id, CaseStatus status);
+    List<Case> findAllByIdInAndStatusIn(Collection<Long> ids, Collection<CaseStatus> statuses);
  }

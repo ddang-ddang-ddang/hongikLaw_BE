@@ -226,7 +226,11 @@ public class CaseService {
             judgmentRepository.save(judgment);
 
             // 사건 상태를 PENDING -> FIRST로 변경
+            //파티모드의 경우 바로 second로 가도록 설정
             aCase.updateStatus(CaseStatus.FIRST);
+            if(aCase.getMode() == CaseMode.PARTY) {
+                aCase.updateStatus(CaseStatus.SECOND);
+            }
         }
 
         eventPublisher.publishEvent(new CaseParticipationEvent(user));

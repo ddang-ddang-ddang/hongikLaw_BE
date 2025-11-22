@@ -131,43 +131,66 @@ public class AdoptService {
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        //유저가 initial한 사건인지 확인
+        // 유저 진영 파악
         List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
-
-        //하나라도 유저가 참여한 항목 반환
         ArgumentInitial userInitialArgument = allInitialArguments.stream()
                 .filter(arg -> arg.getUser().getId().equals(userId))
                 .findFirst()
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
 
-        // 1. 채택할 변론(Defense) ID 목록 가져오기
+        DebateSide mySide = userInitialArgument.getType();
+
+        // 1. 기존 채택 내역 조회 (내 진영)
+        List<Defense> alreadyAdoptedDefenses = defenseRepository.findAllByACase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
+        List<Rebuttal> alreadyAdoptedRebuttals = rebuttalRepository.findAllByDefense_ACase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
+
+        // ★ 핵심 로직: 기존에 하나라도 채택된 게 있었다면, 이번 요청은 '수정'이다.
+        boolean isEditMode = (!alreadyAdoptedDefenses.isEmpty() || !alreadyAdoptedRebuttals.isEmpty());
+
+        // 2. 기존 채택 해제 (경험치 회수 로직 삭제됨)
+        for (Defense oldDefense : alreadyAdoptedDefenses) {
+            oldDefense.markAsAdoptedFalse(); // isAdopted = false 만 수행
+        }
+        for (Rebuttal oldRebuttal : alreadyAdoptedRebuttals) {
+            oldRebuttal.markAsAdoptedFalse(); // isAdopted = false 만 수행
+        }
+
+        // 3. 새로운 Defense 채택 적용
         List<Long> defenseIds = adoptRequestDto.getDefenseId();
         if (defenseIds != null && !defenseIds.isEmpty()) {
-            // 1-1. ID 목록으로 모든 Defense 엔티티 조회
             List<Defense> defensesToAdopt = defenseRepository.findAllById(defenseIds);
-
-            // 1-2. 각 엔티티의 상태를 '채택'으로 변경
             for (Defense defense : defensesToAdopt) {
-                defense.markAsAdopted();
-                defense.getUser().updateExp(100L);
-                eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(),ContentType.DEFENSE));
+                if (defense.getType() == mySide) {
+                    defense.markAsAdopted(); // 채택 마크
+
+                    // ★ 수정 모드가 아닐 때(최초 채택일 때)만 경험치 지급
+                    if (!isEditMode) {
+                        defense.getUser().updateExp(100L);
+                        eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(), ContentType.DEFENSE));
+                    }
+                }
             }
         }
 
-        // 2. 채택할 반론(Rebuttal) ID 목록 가져오기
+        // 4. 새로운 Rebuttal 채택 적용
         List<Long> rebuttalIds = adoptRequestDto.getRebuttalId();
         if (rebuttalIds != null && !rebuttalIds.isEmpty()) {
-            // 2-1. ID 목록으로 모든 Rebuttal 엔티티 조회
             List<Rebuttal> rebuttalsToAdopt = rebuttalRepository.findAllById(rebuttalIds);
-
-            // 2-2. 각 엔티티의 상태를 '채택'으로 변경
             for (Rebuttal rebuttal : rebuttalsToAdopt) {
-                rebuttal.getUser().updateExp(100L);
-                rebuttal.markAsAdopted(); // (Rebuttal 엔티티에는 이미 존재)
-                eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(),ContentType.REBUTTAL));
+                if (rebuttal.getType() == mySide) {
+                    rebuttal.markAsAdopted(); // 채택 마크
+
+                    // ★ 수정 모드가 아닐 때(최초 채택일 때)만 경험치 지급
+                    if (!isEditMode) {
+                        rebuttal.getUser().updateExp(100L);
+                        eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(), ContentType.REBUTTAL));
+                    }
+                }
             }
         }
-        return ApiResponse.onSuccess("success","최종심에 반영될 의견 채택 완료");
+
+        String message = isEditMode ? "채택 목록이 수정되었습니다. (경험치 추가 지급 없음)" : "의견 채택 및 경험치 지급 완료";
+        return ApiResponse.onSuccess("success", message);
     }
 
     public ApiResponse<String> adoptAuto(Long userId, Long caseId) {
