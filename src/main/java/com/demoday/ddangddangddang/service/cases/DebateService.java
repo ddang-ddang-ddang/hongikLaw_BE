@@ -88,34 +88,77 @@ public class DebateService {
 
     /**
      * 2차 재판 상세 정보 조회
+     * (비로그인 유저 가능, 최종심/종료된 사건도 조회 가능)
      */
     @Transactional(readOnly = true)
     public CaseDetail2ndResponseDto getDebateDetails(Long caseId, User user) {
         Case aCase = findCaseById(caseId);
-        checkCaseStatusIsSecond(aCase); // 2차 재판 상태인지 확인
 
-        // 수정: isBlind=false 조건 추가
-        List<Defense> defenseList = defenseRepository.findAllByaCase_IdAndIsBlindFalse(caseId); // (수정된 메서드 사용 가정)
-        // 수정: Rebuttal 조회에도 isBlind=false 조건이 포함되어야 합니다. (QueryDSL 사용 시 용이)
-        // JPA 메서드명은 복잡해지므로, Repositroy에 메서드 추가가 필요합니다. (여기서는 간단한 예시로 대체)
+        // [수정] PENDING 또는 FIRST 상태는 비공개 (조회 불가)
+        if (aCase.getStatus() == CaseStatus.PENDING || aCase.getStatus() == CaseStatus.FIRST) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "공개되지 않은 재판이거나 권한이 없습니다.");
+        }
+        // (참고) SOLO 모드에서 2차를 안 가고 DONE이 된 경우도 appealDeadline이 null이므로 아래 로직 등으로 걸러낼 수 있으나,
+        // 현재 DONE 상태는 getFinishedCases에서 필터링하고, 여기서는 ID를 알고 들어온 경우 보여줄지 말지 결정.
+        // 기획상 '1차에서 끝낸 것(FIRST/DONE(solo))'은 비공개이므로 appealDeadline 체크 추가 가능.
+        if (aCase.getStatus() == CaseStatus.DONE && aCase.getAppealDeadline() == null) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "비공개 종료된 사건입니다.");
+        }
+
+        // 1. 변론 조회 (BLIND 제외)
+        List<Defense> defenseList = defenseRepository.findAllByaCase_IdAndIsBlindFalse(caseId);
+
+        // 2. 반론 조회 (BLIND 제외)
         List<Rebuttal> rebuttalList = rebuttalRepository.findAllByDefense_aCase_Id(caseId).stream()
                 .filter(r -> !r.getIsBlind())
                 .collect(Collectors.toList());
 
-        Vote userVote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId()).orElse(null);
+        // 3. 유저 관련 정보 (Vote, Like) - 비로그인(Guest) 처리
+        Vote userVote = null;
+        Set<Long> userLikedDefenseIds = Set.of();
+        Set<Long> userLikedRebuttalIds = Set.of();
 
-        // 2차 재판(FINAL) 판결문 조회 (가장 최신 버전으로 수정)
-        Judgment finalJudgment = judgmentRepository.findTopByaCase_IdAndStageOrderByCreatedAtDesc(caseId, JudgmentStage.FINAL).orElse(null);
+        if (user != null) {
+            userVote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId()).orElse(null);
+            userLikedDefenseIds = likeRepository.findAllByUserAndContentType(user, ContentType.DEFENSE)
+                    .stream().map(Like::getContentId).collect(Collectors.toSet());
+            userLikedRebuttalIds = likeRepository.findAllByUserAndContentType(user, ContentType.REBUTTAL)
+                    .stream().map(Like::getContentId).collect(Collectors.toSet());
+        }
 
-        // 사용자가 좋아요 누른 변론/반론 ID 목록 조회
-        Set<Long> userLikedDefenseIds = likeRepository.findAllByUserAndContentType(user, ContentType.DEFENSE)
-                .stream().map(Like::getContentId).collect(Collectors.toSet());
-        Set<Long> userLikedRebuttalIds = likeRepository.findAllByUserAndContentType(user, ContentType.REBUTTAL)
-                .stream().map(Like::getContentId).collect(Collectors.toSet());
+        // 4. 판결문 조회 (최종심 우선, 없으면 초심)
+        Judgment finalJudgment = judgmentRepository.findTopByaCase_IdAndStageOrderByCreatedAtDesc(caseId, JudgmentStage.FINAL)
+                .orElse(judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.INITIAL).orElse(null));
+
+        // 5. 1차 입장문 조회 및 매핑
+        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+        ArgumentInitial argA = arguments.stream().filter(a -> a.getType() == DebateSide.A).findFirst().orElse(null);
+        ArgumentInitial argB = arguments.stream().filter(a -> a.getType() == DebateSide.B).findFirst().orElse(null);
 
         return CaseDetail2ndResponseDto.fromEntities(
-                aCase, defenseList, rebuttalList, userVote, finalJudgment, userLikedDefenseIds, userLikedRebuttalIds
+                aCase, defenseList, rebuttalList, userVote, finalJudgment,
+                userLikedDefenseIds, userLikedRebuttalIds,
+                argA, argB
         );
+    }
+
+    /**
+     * [신규] 최종 판결 이후의 사건 목록 조회 (THIRD, DONE)
+     */
+    @Transactional(readOnly = true)
+    public List<CaseOnResponseDto> getFinishedCases() {
+        // 1. THIRD 상태 (최종심 진행 중, 이미 2차는 끝남)
+        List<Case> thirdCases = caseRepository.findAllByStatusOrderByCreatedAtDesc(CaseStatus.THIRD);
+
+        // 2. DONE 상태 중 AppealDeadline이 있는 것 (2차를 거쳐 종료된 것)
+        List<Case> doneCases = caseRepository.findAllByStatusAndAppealDeadlineIsNotNullOrderByCreatedAtDesc(CaseStatus.DONE);
+
+        // 합치고 최신순 정렬
+        List<Case> allFinishedCases = Stream.concat(thirdCases.stream(), doneCases.stream())
+                .sorted(Comparator.comparing(Case::getCreatedAt).reversed())
+                .collect(Collectors.toList());
+
+        return convertToDto(allFinishedCases);
     }
 
     /**
@@ -123,32 +166,9 @@ public class DebateService {
      */
     @Transactional(readOnly = true)
     public List<CaseOnResponseDto> getSecondStageCases() {
-        // 1. SECOND 상태인 사건 목록을 최신순으로 조회
+        // SECOND 상태인 사건만 조회
         List<Case> secondCases = caseRepository.findAllByStatusOrderByCreatedAtDesc(CaseStatus.SECOND);
-
-        if (secondCases.isEmpty()) {
-            return List.of();
-        }
-
-        // 2. N+1 문제 방지를 위해 모든 SECOND 사건의 1차 입장문을 한 번에 조회
-        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseInOrderByTypeAsc(secondCases);
-
-        // 3. Case ID 기준으로 A, B측 입장문(mainArgument) 목록을 매핑
-        Map<Long, List<String>> argumentsMap = arguments.stream()
-                .collect(Collectors.groupingBy(
-                        argument -> argument.getACase().getId(),
-                        Collectors.mapping(ArgumentInitial::getMainArgument, Collectors.toList())
-                ));
-
-        // 4. DTO로 변환하여 반환
-        return secondCases.stream()
-                .map(aCase -> CaseOnResponseDto.builder()
-                        .caseId(aCase.getId())
-                        .title(aCase.getTitle())
-                        .status(aCase.getStatus())
-                        .mainArguments(argumentsMap.getOrDefault(aCase.getId(), List.of()))
-                        .build())
-                .collect(Collectors.toList());
+        return convertToDto(secondCases);
     }
 
     /**
@@ -157,18 +177,22 @@ public class DebateService {
     @Transactional(readOnly = true)
     public List<DefenseResponseDto> getDefensesByCase(Long caseId, User user) {
         Case aCase = findCaseById(caseId);
-        checkCaseStatusIsSecond(aCase); // 2차 재판 상태인지 확인
 
-        // 1. [수정] DefenseRepository의 새로운 메서드를 사용하여 BLIND 처리되지 않은 변론만 조회합니다.
+        // [수정] 상태 체크 로직 (getDebateDetails와 동일한 기준으로 조회 허용)
+        if (aCase.getStatus() == CaseStatus.PENDING || aCase.getStatus() == CaseStatus.FIRST) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "공개되지 않은 재판입니다.");
+        }
+
         List<Defense> defenses = defenseRepository.findAllByaCase_IdAndIsBlindFalse(caseId);
 
-        Set<Long> userLikedDefenseIds = likeRepository.findAllByUserAndContentType(user, ContentType.DEFENSE)
-                .stream().map(Like::getContentId).collect(Collectors.toSet());
+        Set<Long> userLikedDefenseIds = (user != null) ?
+                likeRepository.findAllByUserAndContentType(user, ContentType.DEFENSE)
+                        .stream().map(Like::getContentId).collect(Collectors.toSet())
+                : Set.of();
 
-        // 2. [수정] 반론 개수를 셀 때, 반론 엔티티의 isBlind 필드가 false인 항목만 카운트하도록 필터링을 추가합니다.
         Map<Long, Long> rebuttalCounts = rebuttalRepository.findAllByDefense_aCase_Id(caseId)
                 .stream()
-                .filter(r -> !r.getIsBlind()) // ✨ BLIND 반론 제외 필터링 추가
+                .filter(r -> !r.getIsBlind())
                 .collect(Collectors.groupingBy(r -> r.getDefense().getId(), Collectors.counting()));
 
         return defenses.stream()
@@ -197,7 +221,9 @@ public class DebateService {
     @Transactional
     public Defense createDefense(Long caseId, DefenseRequestDto requestDto, User user) {
         Case aCase = findCaseById(caseId);
-        checkCaseStatusIsSecond(aCase); // 2차 재판 상태인지 확인
+
+        // [수정] 작성 가능 상태 체크 (SECOND, THIRD, DONE 모두 가능)
+        checkCaseStatusForDebate(aCase);
 
         Defense defense = Defense.builder()
                 .aCase(aCase)
@@ -208,13 +234,9 @@ public class DebateService {
                 .build();
         Defense savedDefense = defenseRepository.save(defense);
 
-        // 변론 작성 보상 (+50)
         user.addExp(50L);
-
         rankingService.addCaseScore(caseId, 5.0);
-
-        eventPublisher.publishEvent(new PostCreatedEvent(user,ContentType.DEFENSE));
-        // eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId)); // 실시간 ai 판결 업데이트 임시 주석
+        eventPublisher.publishEvent(new PostCreatedEvent(user, ContentType.DEFENSE));
         return savedDefense;
     }
 
@@ -225,17 +247,16 @@ public class DebateService {
     public Rebuttal createRebuttal(RebuttalRequestDto requestDto, User user) {
         Defense defense = defenseRepository.findById(requestDto.getDefenseId())
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "원본 변론을 찾을 수 없습니다."));
-        checkCaseStatusIsSecond(defense.getACase());
+
+        // [수정] 작성 가능 상태 체크
+        checkCaseStatusForDebate(defense.getACase());
 
         Rebuttal parentRebuttal = null;
-
-        // parentId가 0 또는 null이 아닐 때만 부모 찾도록 수정
         if (requestDto.getParentId() != null && requestDto.getParentId() != 0L) {
             parentRebuttal = rebuttalRepository.findById(requestDto.getParentId())
                     .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "부모 반론을 찾을 수 없습니다."));
-
             if (!parentRebuttal.getDefense().getId().equals(defense.getId())) {
-                throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "잘못된 부모 반론 ID 입니다. 해당 변론에 속하지 않습니다.");
+                throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "잘못된 부모 반론 ID 입니다.");
             }
         }
 
@@ -249,49 +270,12 @@ public class DebateService {
                 .build();
         Rebuttal savedRebuttal = rebuttalRepository.save(rebuttal);
 
-        // [알림 로직]
-        // 1. 대대댓글(답글의 답글)인 경우 -> 바로 위 부모 댓글 작성자에게 알림
-        if (parentRebuttal != null) {
-            Long targetUserId = parentRebuttal.getUser().getId();
-            // 본인이 본인 글에 단 경우는 알림 제외
-            if (!targetUserId.equals(user.getId())) {
-                NotificationResponseDto dto = NotificationResponseDto.builder()
-                        .message("내 반론에 새로운 대댓글이 달렸습니다.")
-                        .caseId(rebuttal.getDefense().getACase().getId())
-                        .defenseId(rebuttal.getDefense().getId())
-                        .parentId(parentRebuttal.getId())
-                        .rebuttalId(rebuttal.getId())
-                        .iconUrl("https://ddangddangddang-demoday.s3.ap-northeast-2.amazonaws.com/icons/versus.png")
-                        .build();
+        // 알림 로직 (기존 유지)
+        sendRebuttalNotification(rebuttal, defense, parentRebuttal, user);
 
-                sseEmitters.sendNotification(targetUserId, "notification", dto);
-            }
-        }
-        // 2. 일반 반론(댓글)인 경우 -> 변론(게시글) 작성자에게 알림
-        else {
-            Long targetUserId = defense.getUser().getId();
-            // 본인이 본인 변론에 댓글 단 경우 제외
-            if (!targetUserId.equals(user.getId())) {
-                NotificationResponseDto dto = NotificationResponseDto.builder()
-                        .message("내 변론에 새로운 반론이 달렸습니다.")
-                        .caseId(rebuttal.getDefense().getACase().getId())
-                        .defenseId(rebuttal.getDefense().getId())
-                        .parentId(null)
-                        .rebuttalId(rebuttal.getId())
-                        .iconUrl("https://ddangddangddang-demoday.s3.ap-northeast-2.amazonaws.com/icons/versus.png")
-                        .build();
-
-                sseEmitters.sendNotification(targetUserId, "notification", dto);
-            }
-        }
-
-        // 반론 작성 보상 (+50)
         user.addExp(50L);
-
         rankingService.addCaseScore(defense.getACase().getId(), 5.0);
-
-        eventPublisher.publishEvent(new PostCreatedEvent(user,ContentType.REBUTTAL));
-        // eventPublisher.publishEvent(new UpdateJudgmentEvent(defense.getACase().getId())); // 실시간 ai 판결 업데이트 임시 주석
+        eventPublisher.publishEvent(new PostCreatedEvent(user, ContentType.REBUTTAL));
         return savedRebuttal;
     }
 
@@ -301,19 +285,20 @@ public class DebateService {
     @Transactional
     public void castVote(Long caseId, VoteRequestDto requestDto, User user) {
         Case aCase = findCaseById(caseId);
-        checkCaseStatusIsSecond(aCase);
 
-        checkDeadline(aCase);
+        // [중요] 투표는 SECOND 상태에서만 가능 (기존 로직 유지 + STRICT Check)
+        if (aCase.getStatus() != CaseStatus.SECOND) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "투표가 마감되었거나 진행 중이 아닙니다.");
+        }
+        checkDeadline(aCase); // 마감 시간 이중 체크
 
         Vote vote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId())
                 .map(existingVote -> {
-                    // 이미 투표했으면 경험치 추가 지급 안함 (입장 변경만)
                     existingVote.updateChoice(requestDto.getChoice());
                     return existingVote;
                 })
                 .orElseGet(() -> {
-                    // 첫 투표일 경우에만 경험치 지급
-                    user.addExp(10L); // 투표 보상 (+10)
+                    user.addExp(10L);
                     return Vote.builder()
                             .aCase(aCase)
                             .user(user)
@@ -321,9 +306,7 @@ public class DebateService {
                             .build();
                 });
         voteRepository.save(vote);
-
         rankingService.addCaseScore(caseId, 3.0);
-        // eventPublisher.publishEvent(new UpdateJudgmentEvent(caseId)); // 실시간 ai 판결 업뎃 주석
     }
 
     /**
@@ -354,16 +337,57 @@ public class DebateService {
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "사건을 찾을 수 없습니다."));
     }
 
-    private void checkCaseStatusIsSecond(Case aCase) {
-        if (aCase.getStatus() != CaseStatus.SECOND) {
-            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "현재 2차 재판(변론/투표)이 진행 중인 사건이 아닙니다.");
+    // [수정] 변론/반론 작성 시 상태 체크 (SECOND, THIRD, DONE 허용, 단 1차 종료는 제외)
+    private void checkCaseStatusForDebate(Case aCase) {
+        if (aCase.getStatus() == CaseStatus.PENDING || aCase.getStatus() == CaseStatus.FIRST) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "토론이 활성화되지 않은 사건입니다.");
+        }
+        // DONE 상태여도 appealDeadline이 없으면 1차에서 끝난 사건(비공개)이므로 작성 불가
+        if (aCase.getStatus() == CaseStatus.DONE && aCase.getAppealDeadline() == null) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN, "종료된 비공개 사건입니다.");
         }
     }
 
-    // 투표 마감 시간 체크
     private void checkDeadline(Case aCase) {
         if (aCase.getAppealDeadline() != null && aCase.getAppealDeadline().isBefore(LocalDateTime.now())) {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "투표가 마감되었습니다.");
         }
+    }
+
+    private void sendRebuttalNotification(Rebuttal rebuttal, Defense defense, Rebuttal parentRebuttal, User user) {
+        // ... 기존 알림 로직 ...
+        Long targetUserId = (parentRebuttal != null) ? parentRebuttal.getUser().getId() : defense.getUser().getId();
+        if (!targetUserId.equals(user.getId())) {
+            NotificationResponseDto dto = NotificationResponseDto.builder()
+                    .message(parentRebuttal != null ? "내 반론에 대댓글이 달렸습니다." : "내 변론에 반론이 달렸습니다.")
+                    .caseId(defense.getACase().getId())
+                    .defenseId(defense.getId())
+                    .parentId(parentRebuttal != null ? parentRebuttal.getId() : null)
+                    .rebuttalId(rebuttal.getId())
+                    .iconUrl("https://ddangddangddang-demoday.s3.ap-northeast-2.amazonaws.com/icons/versus.png")
+                    .build();
+            sseEmitters.sendNotification(targetUserId, "notification", dto);
+        }
+    }
+
+    // DTO 변환 헬퍼 (중복 코드 제거용)
+    private List<CaseOnResponseDto> convertToDto(List<Case> cases) {
+        if (cases.isEmpty()) return List.of();
+
+        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseInOrderByTypeAsc(cases);
+        Map<Long, List<String>> argumentsMap = arguments.stream()
+                .collect(Collectors.groupingBy(
+                        argument -> argument.getACase().getId(),
+                        Collectors.mapping(ArgumentInitial::getMainArgument, Collectors.toList())
+                ));
+
+        return cases.stream()
+                .map(aCase -> CaseOnResponseDto.builder()
+                        .caseId(aCase.getId())
+                        .title(aCase.getTitle())
+                        .status(aCase.getStatus())
+                        .mainArguments(argumentsMap.getOrDefault(aCase.getId(), List.of()))
+                        .build())
+                .collect(Collectors.toList());
     }
 }

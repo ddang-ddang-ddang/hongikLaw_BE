@@ -19,6 +19,9 @@ public interface CaseRepository extends JpaRepository<Case,Long> {
 
     List<Case> findByAppealDeadlineBeforeAndStatus(LocalDateTime threshold, CaseStatus status);
 
+    // 상태가 일치하고, AppealDeadline이 Null이 아닌(2차 재판을 겪은) 사건 조회
+    List<Case> findAllByStatusAndAppealDeadlineIsNotNullOrderByCreatedAtDesc(CaseStatus status);
+
     @Query("SELECT COUNT(DISTINCT u) FROM User u WHERE " +
             // 1. 변론 작성자
             "u.id IN (SELECT d.user.id FROM Defense d WHERE d.aCase.id = :caseId) OR " +

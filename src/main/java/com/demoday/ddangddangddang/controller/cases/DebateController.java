@@ -45,13 +45,16 @@ public class DebateController {
         return ResponseEntity.ok(ApiResponse.onSuccess("2차 재판이 성공적으로 시작되었습니다."));
     }
 
-    @Operation(summary = "2차 재판 상세 정보 조회", description = "2차 재판에 필요한 모든 정보(주제, 변론, 중첩 반론, 내 투표 현황, 실시간 AI 판결)를 조회합니다.")
+    @Operation(summary = "2차 재판 상세 정보 조회", description = "2차 재판 정보(주제, 변론, 1차 입장문 등)를 조회합니다. 비로그인 유저도 조회 가능합니다.")
     @GetMapping("/cases/{caseId}/debate")
     public ResponseEntity<ApiResponse<CaseDetail2ndResponseDto>> getDebateDetails(
             @PathVariable Long caseId,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        CaseDetail2ndResponseDto responseDto = debateService.getDebateDetails(caseId, userDetails.getUser());
+        // User 객체를 null로 넘길 수 있도록 처리
+        com.demoday.ddangddangddang.domain.User user = (userDetails != null) ? userDetails.getUser() : null;
+
+        CaseDetail2ndResponseDto responseDto = debateService.getDebateDetails(caseId, user);
         return ResponseEntity.ok(ApiResponse.onSuccess("2차 재판 정보 조회에 성공하였습니다.", responseDto));
     }
 
@@ -63,6 +66,14 @@ public class DebateController {
     public ResponseEntity<ApiResponse<List<CaseOnResponseDto>>> getSecondStageCases() {
         List<CaseOnResponseDto> responseDto = debateService.getSecondStageCases();
         return ResponseEntity.ok(ApiResponse.onSuccess("2차 재판 진행 사건 목록 조회 성공", responseDto));
+    }
+
+    // 최종판결 완료된 사건 목록 조회 (2차 재판 리스트 뷰 등에서 사용)
+    @Operation(summary = "판결 완료된 사건 목록 조회", description = "최종 판결(THIRD, DONE) 상태이지만 변론/반론 작성이 가능한 사건 목록을 조회합니다.")
+    @GetMapping("/finished")
+    public ResponseEntity<ApiResponse<List<CaseOnResponseDto>>> getFinishedCases() {
+        List<CaseOnResponseDto> responseDto = debateService.getFinishedCases();
+        return ResponseEntity.ok(ApiResponse.onSuccess("판결 완료된 사건 목록 조회 성공", responseDto));
     }
 
     @Operation(summary = "2차 재판 '변론' 목록 조회", description = "2차 재판의 모든 '변론' 목록과 각 변론의 '반론 개수'를 조회합니다.")
