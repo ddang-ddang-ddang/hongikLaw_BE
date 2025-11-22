@@ -7,6 +7,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class UserResponseDto {
+    private Long userId;
     private String nickname;
     private String email;
     private Rank rank;
