@@ -18,5 +18,5 @@ public interface JudgmentRepository extends JpaRepository<Judgment, Long> {
     // 특정 사건의 FINAL 스테이지 판결을 '오래된 순'으로 모두 조회
     List<Judgment> findAllByaCase_IdAndStageOrderByCreatedAtAsc(Long caseId, JudgmentStage stage);
 
-    int countByaCase_Id(Long aCaseId);
+    int countByaCase_IdAndStage(Long aCaseId,JudgmentStage stage);
 }
