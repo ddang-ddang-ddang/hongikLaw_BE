@@ -34,6 +34,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.Collections;
 
 @Slf4j
 @Service
@@ -74,6 +75,15 @@ public class DebateService {
         // 2차 재판 시작 시, 1차 판결문 기반으로 '최종심' 판결문 생성 (이후 계속 업데이트됨)
         Judgment initialJudgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.INITIAL)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INTERNAL_SERVER_ERROR, "1차 판결문이 없습니다."));
+
+        // 1차 판결문의 텍스트(basedOn)를 그대로 복사하지 않고, 빈 JSON 구조를 넣어줍니다.
+        JudgementBasisDto emptyBasis = new JudgementBasisDto(Collections.emptyList(), Collections.emptyList());
+        String emptyBasisJson;
+        try {
+            emptyBasisJson = objectMapper.writeValueAsString(emptyBasis);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("초기 설정 중 JSON 변환 오류", e);
+        }
 
         Judgment finalJudgment = Judgment.builder()
                 .aCase(foundCase)
