@@ -1,5 +1,6 @@
 package com.demoday.ddangddangddang.controller.third;
 
+import com.demoday.ddangddangddang.domain.enums.ShowJudgeStatus;
 import com.demoday.ddangddangddang.dto.caseDto.JudgmentResponseDto;
 import com.demoday.ddangddangddang.dto.third.FinalJudgmentRequestDto;
 import com.demoday.ddangddangddang.dto.third.JudgementDetailResponseDto;
@@ -66,5 +67,11 @@ public class FinalJudgeController {
     @GetMapping("/{caseId}/history") // [✅ 신규 API]
     public ApiResponse<List<JudgmentResponseDto>> getFinalJudgmentHistory(@PathVariable Long caseId) {
         return finalJudgeService.getJudgmentHistory(caseId);
+    }
+
+    @Operation(summary = "최종 판결 여부 조회", description = "유저 의견까지 채택한 최종 판결 생성 여부를 전달")
+    @GetMapping("/{caseId}/judgeStatus")
+    public ApiResponse<ShowJudgeStatus> getJudgeStatus(@PathVariable Long caseId){
+        return finalJudgeService.getJudgeStatus(caseId);
     }
 }

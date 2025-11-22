@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -71,6 +72,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,"/api/final/judge/**").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/home/hot").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/final/adopt/{caseId}//**").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/final/judge/{caseId}/judgeStatus").permitAll()
                 .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
         );
 
