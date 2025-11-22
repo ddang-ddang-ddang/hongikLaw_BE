@@ -33,4 +33,6 @@ public interface CaseRepository extends JpaRepository<Case,Long> {
             "u.id IN (SELECT l.user.id FROM Like l WHERE l.contentType = 'REBUTTAL' " +
             "         AND l.contentId IN (SELECT r.id FROM Rebuttal r JOIN r.defense d WHERE d.aCase.id = :caseId))")
     int countDistinctParticipants(@Param("caseId") Long caseId);
-}
+
+    List<Case> findByIdAndStatusNot(Long id, CaseStatus status);
+ }
