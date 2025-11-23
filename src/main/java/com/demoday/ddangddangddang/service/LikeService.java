@@ -56,14 +56,14 @@ public class LikeService {
                 defense.decrementLikesCount();
                 caseIdToUpdate = defense.getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate, -3.0);
-                defense.getUser().updateExp(-5L);
+                defense.getUser().addExp(-5L);
             } else {
                 Rebuttal rebuttal = rebuttalRepository.findById(contentId)
                         .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "반론을 찾을 수 없습니다."));
                 rebuttal.decrementLikesCount();
                 caseIdToUpdate = rebuttal.getDefense().getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate, -3.0);
-                rebuttal.getUser().updateExp(-5L);
+                rebuttal.getUser().addExp(-5L);
             }
 
             isLiked = false;
@@ -83,7 +83,7 @@ public class LikeService {
                 defense.incrementLikesCount();
                 caseIdToUpdate = defense.getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate,3.0);
-                defense.getUser().updateExp(5L);
+                defense.getUser().addExp(5L);
                 eventPublisher.publishEvent(new LikedEvent(defense.getUser()));
             } else {
                 Rebuttal rebuttal = rebuttalRepository.findById(contentId)
@@ -91,7 +91,7 @@ public class LikeService {
                 rebuttal.incrementLikesCount();
                 caseIdToUpdate = rebuttal.getDefense().getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate,3.0);
-                rebuttal.getUser().updateExp(5L);
+                rebuttal.getUser().addExp(5L);
                 eventPublisher.publishEvent(new LikedEvent(rebuttal.getUser()));
             }
 
