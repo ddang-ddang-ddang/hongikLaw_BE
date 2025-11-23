@@ -85,9 +85,6 @@ public class User extends BaseEntity {
     }
 
     public void updateMypageInfo(UserUpdateRequestDto dto) {
-        if(dto.getEmail() != null) {
-            this.email = dto.getEmail();
-        }
         // 닉네임이 요청에 포함된 경우에만 업데이트
         if (dto.getNickname() != null) {
             this.nickname = dto.getNickname();

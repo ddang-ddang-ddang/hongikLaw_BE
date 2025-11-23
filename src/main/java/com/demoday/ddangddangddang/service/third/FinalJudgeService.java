@@ -94,7 +94,7 @@ public class FinalJudgeService {
         Judgment finalJudgment = Judgment.builder()
                 .aCase(foundCase)
                 .stage(JudgmentStage.FINAL)
-                .content(aiResult.getVerdict() + aiResult.getConclusion())
+                .content(aiResult.getVerdict()+ "\n"+ aiResult.getConclusion())
                 .ratioA(aiResult.getRatioA())
                 .ratioB(aiResult.getRatioB())
                 .basedOn(basedOnJson)
