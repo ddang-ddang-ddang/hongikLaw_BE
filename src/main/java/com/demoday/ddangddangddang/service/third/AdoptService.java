@@ -12,6 +12,7 @@ import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.repository.*;
+import com.demoday.ddangddangddang.service.ExpService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,6 +32,7 @@ public class AdoptService {
     private final UserRepository userRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ExpService expService;
 
     //좋아요 많은 순으로 노출 (유저가 채택화면에서 보게 될 선택지)
     public ApiResponse<AdoptResponseDto> getOpinionBest(Long userId, Long caseId) {
@@ -165,7 +167,7 @@ public class AdoptService {
 
                     // ★ 수정 모드가 아닐 때(최초 채택일 때)만 경험치 지급
                     if (!isEditMode) {
-                        defense.getUser().addExp(100L);
+                        expService.addExp(defense.getUser(), 100L, "변론 채택됨 (작성자)");
                         eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(), ContentType.DEFENSE));
                     }
                 }
@@ -182,7 +184,7 @@ public class AdoptService {
 
                     // ★ 수정 모드가 아닐 때(최초 채택일 때)만 경험치 지급
                     if (!isEditMode) {
-                        rebuttal.getUser().addExp(100L);
+                        expService.addExp(rebuttal.getUser(), 100L, "반론 채택됨 (작성자)");
                         eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(), ContentType.REBUTTAL));
                     }
                 }
@@ -273,7 +275,7 @@ public class AdoptService {
                     // 이미 채택된 경우 중복 처리 방지 (옵션)
                     if (!Boolean.TRUE.equals(defense.getIsAdopted())) {
                         defense.markAsAdopted();
-                        defense.getUser().addExp(100L);
+                        expService.addExp(defense.getUser(), 100L, "변론 자동 채택");
                         eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(),ContentType.DEFENSE));
                     }
                 });
@@ -281,7 +283,7 @@ public class AdoptService {
                 rebuttalRepository.findById(item.getId()).ifPresent(rebuttal -> {
                     if (!Boolean.TRUE.equals(rebuttal.getIsAdopted())) {
                         rebuttal.markAsAdopted();
-                        rebuttal.getUser().addExp(100L);
+                        expService.addExp(rebuttal.getUser(), 100L, "반론 자동 채택");
                         eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(),ContentType.REBUTTAL));
                     }
                 });
