@@ -56,8 +56,11 @@ public class Case extends BaseEntity {
         }
     }
 
-    // --- [ startAppeal 메서드 수정: deadline 파라미터 제거 ] ---
+    // --- [ startAppeal 메서드 수정: deadline null 체크 추가 ] ---
     public void startAppeal(LocalDateTime deadline) {
+        if (deadline == null) {
+            throw new IllegalArgumentException("2차 재판 마감 기한(deadline)은 필수입니다.");
+        }
         this.status = CaseStatus.SECOND;
         this.appealDeadline = deadline;
     }
