@@ -165,7 +165,7 @@ public class AdoptService {
 
                     // ★ 수정 모드가 아닐 때(최초 채택일 때)만 경험치 지급
                     if (!isEditMode) {
-                        defense.getUser().updateExp(100L);
+                        defense.getUser().addExp(100L);
                         eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(), ContentType.DEFENSE));
                     }
                 }
@@ -182,7 +182,7 @@ public class AdoptService {
 
                     // ★ 수정 모드가 아닐 때(최초 채택일 때)만 경험치 지급
                     if (!isEditMode) {
-                        rebuttal.getUser().updateExp(100L);
+                        rebuttal.getUser().addExp(100L);
                         eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(), ContentType.REBUTTAL));
                     }
                 }
@@ -273,7 +273,7 @@ public class AdoptService {
                     // 이미 채택된 경우 중복 처리 방지 (옵션)
                     if (!Boolean.TRUE.equals(defense.getIsAdopted())) {
                         defense.markAsAdopted();
-                        defense.getUser().updateExp(100L);
+                        defense.getUser().addExp(100L);
                         eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(),ContentType.DEFENSE));
                     }
                 });
@@ -281,7 +281,7 @@ public class AdoptService {
                 rebuttalRepository.findById(item.getId()).ifPresent(rebuttal -> {
                     if (!Boolean.TRUE.equals(rebuttal.getIsAdopted())) {
                         rebuttal.markAsAdopted();
-                        rebuttal.getUser().updateExp(100L);
+                        rebuttal.getUser().addExp(100L);
                         eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(),ContentType.REBUTTAL));
                     }
                 });

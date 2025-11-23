@@ -131,7 +131,7 @@ public class FinalJudgeService {
                 if (argumentInitial.getType() == winSide) {
                     caseParticipation.updateResult(CaseResult.WIN);
                     eventPublisher.publishEvent(new WinEvent(user));
-                    caseParticipation.getUser().updateExp(150L);
+                    caseParticipation.getUser().addExp(150L);
                     caseParticipation.getUser().updateWin();
                 } else if (winSide == DebateSide.DRAW) {
                     caseParticipation.updateResult(CaseResult.DRAW);
@@ -146,7 +146,7 @@ public class FinalJudgeService {
         for (Defense adoptDefense : adoptedDefenses) {
             if (adoptDefense.getType() == winSide) {
                 adoptDefense.updateResult(CaseResult.WIN);
-                adoptDefense.getUser().updateExp(150L);
+                adoptDefense.getUser().addExp(150L);
                 adoptDefense.getUser().updateWin();
                 eventPublisher.publishEvent(new WinEvent(adoptDefense.getUser()));
             } else if (winSide == DebateSide.DRAW) {
@@ -160,7 +160,7 @@ public class FinalJudgeService {
         for (Rebuttal adoptedRebuttal : adoptedRebuttals) {
             if (adoptedRebuttal.getType() == winSide) {
                 adoptedRebuttal.updateResult(CaseResult.WIN);
-                adoptedRebuttal.getUser().updateExp(150L);
+                adoptedRebuttal.getUser().addExp(150L);
                 adoptedRebuttal.getUser().updateWin();
                 eventPublisher.publishEvent(new WinEvent(adoptedRebuttal.getUser()));
             } else if (winSide == DebateSide.DRAW) {
@@ -175,7 +175,7 @@ public class FinalJudgeService {
         if (winSide != DebateSide.DRAW) {
             List<Vote> winVotes = voteRepository.findByaCase_IdAndType(foundCase.getId(), winSide);
             for (Vote winVote : winVotes) {
-                winVote.getUser().updateExp(20L);
+                winVote.getUser().addExp(20L);
             }
         }
     }
