@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.service.mypage;
 
 import com.demoday.ddangddangddang.domain.*;
+import com.demoday.ddangddangddang.domain.enums.Rank;
 import com.demoday.ddangddangddang.domain.enums.achieve.AchieveEnum;
 import com.demoday.ddangddangddang.dto.mypage.RankResponseDto;
 import com.demoday.ddangddangddang.dto.mypage.RecordResponseDto;
@@ -19,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.demoday.ddangddangddang.domain.enums.Rank.getRankByExp;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -34,9 +37,11 @@ public class MypageService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND, "유저를 찾을 수 없습니다."));
 
+        Rank rank = getRankByExp(user.getExp());
+
         RankResponseDto rankResponseDto = RankResponseDto.builder()
                 .id(user.getId())
-                .rank(user.getRank())
+                .rank(rank)
                 .exp(user.getExp())
                 .build();
         return ApiResponse.onSuccess("유저 랭크 조회 성공", rankResponseDto);
