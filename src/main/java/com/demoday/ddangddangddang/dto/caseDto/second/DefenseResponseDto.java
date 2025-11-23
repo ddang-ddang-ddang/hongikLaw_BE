@@ -10,6 +10,7 @@ import lombok.Getter;
 public class DefenseResponseDto {
     private Long defenseId;
     private String authorNickname;
+    private String authorProfileUrl;
     private String authorRank;
     private DebateSide side;
     private String content;
@@ -21,6 +22,7 @@ public class DefenseResponseDto {
         return DefenseResponseDto.builder()
                 .defenseId(defense.getId())
                 .authorNickname(defense.getUser().getNickname())
+                .authorProfileUrl(defense.getUser().getProfileImageUrl())
                 .authorRank(defense.getUser().getRank().getDisplayName())
                 .side(defense.getType())
                 .content(defense.getContent())
