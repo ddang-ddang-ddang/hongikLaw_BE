@@ -53,6 +53,7 @@ public class DebateService {
     private final ObjectMapper objectMapper;
     private final SseEmitters sseEmitters;
     private final ArgumentInitialRepository argumentInitialRepository;
+    private final UserRepository userRepository;
 
     /**
      * 2차 재판 시작
@@ -235,16 +236,21 @@ public class DebateService {
         // [수정] 작성 가능 상태 체크 (SECOND, THIRD, DONE 모두 가능)
         checkCaseStatusForDebate(aCase);
 
+        // User를 영속 상태로 조회 (Reload)
+        User managedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+
         Defense defense = Defense.builder()
                 .aCase(aCase)
-                .user(user)
+                .user(managedUser)
                 .type(requestDto.getSide())
                 .content(requestDto.getContent())
                 .caseResult(CaseResult.PENDING)
                 .build();
         Defense savedDefense = defenseRepository.save(defense);
 
-        user.addExp(50L);
+        // 영속 상태인 객체에 경험치 추가 -> Transaction Commit 시점에 DB 반영됨
+        managedUser.addExp(50L);
         rankingService.addCaseScore(caseId, 5.0);
         eventPublisher.publishEvent(new PostCreatedEvent(user, ContentType.DEFENSE));
         return savedDefense;
@@ -261,6 +267,10 @@ public class DebateService {
         // [수정] 작성 가능 상태 체크
         checkCaseStatusForDebate(defense.getACase());
 
+        // User를 영속 상태로 조회
+        User managedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+
         Rebuttal parentRebuttal = null;
         if (requestDto.getParentId() != null && requestDto.getParentId() != 0L) {
             parentRebuttal = rebuttalRepository.findById(requestDto.getParentId())
@@ -272,7 +282,7 @@ public class DebateService {
 
         Rebuttal rebuttal = Rebuttal.builder()
                 .defense(defense)
-                .user(user)
+                .user(managedUser)
                 .parent(parentRebuttal)
                 .type(requestDto.getType())
                 .content(requestDto.getContent())
@@ -283,7 +293,8 @@ public class DebateService {
         // 알림 로직 (기존 유지)
         sendRebuttalNotification(rebuttal, defense, parentRebuttal, user);
 
-        user.addExp(50L);
+        // 영속 상태인 객체에 경험치 추가
+        managedUser.addExp(50L);
         rankingService.addCaseScore(defense.getACase().getId(), 5.0);
         eventPublisher.publishEvent(new PostCreatedEvent(user, ContentType.REBUTTAL));
         return savedRebuttal;
@@ -302,13 +313,18 @@ public class DebateService {
         }
         checkDeadline(aCase); // 마감 시간 이중 체크
 
+        // User를 영속 상태로 조회
+        User managedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
+
         Vote vote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId())
                 .map(existingVote -> {
                     existingVote.updateChoice(requestDto.getChoice());
                     return existingVote;
                 })
                 .orElseGet(() -> {
-                    user.addExp(10L);
+                    // 영속 상태인 객체에 경험치 추가
+                    managedUser.addExp(10L);
                     return Vote.builder()
                             .aCase(aCase)
                             .user(user)
