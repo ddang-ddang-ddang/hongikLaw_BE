@@ -44,8 +44,8 @@ public class JwtUtil {
     }
 
     // Refresh Token 생성
-    public String createRefreshToken() {
-        return createToken(null, null, REFRESH_TOKEN_TIME);
+    public String createRefreshToken(String email) {
+        return createToken(email, null, REFRESH_TOKEN_TIME);
     }
 
     private String createToken(String email, Long userId, long expireTime) {

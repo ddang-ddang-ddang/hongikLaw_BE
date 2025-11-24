@@ -78,7 +78,7 @@ public class AuthService {
 
         // 3. 토큰 생성
         String accessToken = jwtUtil.createAccessToken(user.getEmail(), user.getId());
-        String refreshToken = jwtUtil.createRefreshToken();
+        String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
 
         // Refresh Token을 Redis에 저장
         // (Key: email, Value: refreshToken, Expiry: 7일)
