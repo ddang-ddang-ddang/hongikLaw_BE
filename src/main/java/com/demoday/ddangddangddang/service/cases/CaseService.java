@@ -17,6 +17,7 @@ import com.demoday.ddangddangddang.repository.CaseRepository;
 import com.demoday.ddangddangddang.repository.JudgmentRepository;
 import com.demoday.ddangddangddang.repository.CaseParticipationRepository; // [추가]
 import com.demoday.ddangddangddang.service.ChatGptService;
+import com.demoday.ddangddangddang.service.ExpService;
 import com.demoday.ddangddangddang.service.ranking.RankingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class CaseService {
     private final RankingService rankingService;
     private final SseEmitters sseEmitters;
     private final ApplicationEventPublisher eventPublisher;
+    private final ExpService expService;
 
     @Transactional
     public CaseResponseDto createCase(CaseRequestDto requestDto, User user) {
@@ -87,7 +89,7 @@ public class CaseService {
         caseParticipationRepository.save(CaseParticipation.builder()
                 .aCase(newCase)
                 .user(user)
-                .result(CaseResult.PENDING)
+                .result(CaseResult.ONGOING)
                 .build()); // [수정] Result 추가
 
         List<ArgumentInitial> arguments = List.of(argumentA, argumentB);
@@ -135,10 +137,10 @@ public class CaseService {
         caseParticipationRepository.save(CaseParticipation.builder()
                 .aCase(newCase)
                 .user(user)
-                .result(CaseResult.PENDING).build());
+                .result(CaseResult.ONGOING).build());
 
         // VS 모드 사건 생성 시 +100 exp
-        user.addExp(100L);
+        expService.addExp(user, 100L, "VS 모드 사건 생성");
 
         //이벤트 리스너 호출(사건 생성)
         eventPublisher.publishEvent(new CaseCreatedEvent(user));
@@ -184,7 +186,7 @@ public class CaseService {
         caseParticipationRepository.save(CaseParticipation.builder()
                 .aCase(aCase)
                 .user(user)
-                .result(CaseResult.PENDING)
+                .result(CaseResult.ONGOING)
                 .build());
 
         // 입장문 생성

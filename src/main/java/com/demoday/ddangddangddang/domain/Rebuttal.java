@@ -59,7 +59,7 @@ public class Rebuttal extends BaseEntity {
 
     @Builder.Default
     @Column(name = "case_result")
-    private CaseResult caseResult = CaseResult.PENDING;
+    private CaseResult caseResult = CaseResult.ONGOING;
 
     @Builder
     public Rebuttal(Defense defense, User user, DebateSide type, String content, Rebuttal parent) {

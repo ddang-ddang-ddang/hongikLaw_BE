@@ -51,7 +51,7 @@ public class Defense extends BaseEntity {
 
     @Builder.Default
     @Column(name = "case_result")
-    private CaseResult caseResult = CaseResult.PENDING;
+    private CaseResult caseResult = CaseResult.ONGOING;
 
     // ✅ 생성자 @Builder 제거 (중복 방지)
     public Defense(Case aCase, User user, DebateSide type, String title, String content) {

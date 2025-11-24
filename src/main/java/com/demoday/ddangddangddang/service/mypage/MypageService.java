@@ -14,6 +14,9 @@ import com.demoday.ddangddangddang.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.demoday.ddangddangddang.domain.ExpLog;
+import com.demoday.ddangddangddang.dto.mypage.ExpHistoryResponseDto;
+import com.demoday.ddangddangddang.repository.ExpLogRepository;
 
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +35,27 @@ public class MypageService {
     private final CaseParticipationRepository caseParticipationRepository;
     private final ArgumentInitialRepository argumentInitialRepository;
     private final UserAchievementRepository userAchievementRepository;
+    private final ExpLogRepository expLogRepository;
+
+    // 경험치 히스토리 조회 메서드 추가
+    @Transactional(readOnly = true)
+    public ApiResponse<List<ExpHistoryResponseDto>> getExpHistory(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND, "유저를 찾을 수 없습니다."));
+
+        List<ExpLog> logs = expLogRepository.findAllByUserOrderByCreatedAtDesc(user);
+
+        List<ExpHistoryResponseDto> responseDtos = logs.stream()
+                .map(log -> ExpHistoryResponseDto.builder()
+                        .id(log.getId())
+                        .amount(log.getAmount())
+                        .description(log.getDescription())
+                        .createdAt(log.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        return ApiResponse.onSuccess("경험치 내역 조회 성공", responseDtos);
+    }
 
     public ApiResponse<RankResponseDto> getRank(Long userId) {
         User user = userRepository.findById(userId)

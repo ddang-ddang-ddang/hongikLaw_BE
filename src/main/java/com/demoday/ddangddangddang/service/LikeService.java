@@ -28,6 +28,7 @@ public class LikeService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final RankingService rankingService;
+    private final ExpService expService;
 
     /**
      * 변론 / 반론 좋아요 토글
@@ -56,14 +57,14 @@ public class LikeService {
                 defense.decrementLikesCount();
                 caseIdToUpdate = defense.getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate, -3.0);
-                defense.getUser().updateExp(-5L);
+                expService.addExp(defense.getUser(), -5L, "변론 좋아요 취소됨");
             } else {
                 Rebuttal rebuttal = rebuttalRepository.findById(contentId)
                         .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "반론을 찾을 수 없습니다."));
                 rebuttal.decrementLikesCount();
                 caseIdToUpdate = rebuttal.getDefense().getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate, -3.0);
-                rebuttal.getUser().updateExp(-5L);
+                expService.addExp(rebuttal.getUser(), -5L, "반론 좋아요 취소됨");
             }
 
             isLiked = false;
@@ -83,7 +84,7 @@ public class LikeService {
                 defense.incrementLikesCount();
                 caseIdToUpdate = defense.getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate,3.0);
-                defense.getUser().updateExp(5L);
+                expService.addExp(defense.getUser(), 5L, "변론 좋아요 받음");
                 eventPublisher.publishEvent(new LikedEvent(defense.getUser()));
             } else {
                 Rebuttal rebuttal = rebuttalRepository.findById(contentId)
@@ -91,7 +92,7 @@ public class LikeService {
                 rebuttal.incrementLikesCount();
                 caseIdToUpdate = rebuttal.getDefense().getACase().getId();
                 rankingService.addCaseScore(caseIdToUpdate,3.0);
-                rebuttal.getUser().updateExp(5L);
+                expService.addExp(rebuttal.getUser(), 5L, "반론 좋아요 받음");
                 eventPublisher.publishEvent(new LikedEvent(rebuttal.getUser()));
             }
 

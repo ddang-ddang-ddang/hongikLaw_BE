@@ -7,6 +7,7 @@ import com.demoday.ddangddangddang.dto.mypage.UserAchievementResponseDto;
 import com.demoday.ddangddangddang.dto.mypage.UserArchiveResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.service.mypage.MypageService;
+import com.demoday.ddangddangddang.dto.mypage.ExpHistoryResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -29,6 +30,41 @@ import java.util.List;
 @SecurityRequirement(name = "JWT TOKEN")
 public class MypageController {
     private final MypageService mypageService;
+
+    @Operation(summary = "경험치 내역 조회", description = "로그인한 유저의 경험치 획득/차감 내역을 조회합니다. - by 최우혁")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "경험치 내역 조회 성공",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiResponse.class),
+                            examples = @ExampleObject(value =
+                                    "{\n" +
+                                            "  \"isSuccess\": true,\n" +
+                                            "  \"code\": \"COMMON2000\",\n" +
+                                            "  \"message\": \"경험치 내역 조회 성공\",\n" +
+                                            "  \"result\": [\n" +
+                                            "    {\n" +
+                                            "      \"id\": 10,\n" +
+                                            "      \"amount\": 150,\n" +
+                                            "      \"description\": \"재판 승리\",\n" +
+                                            "      \"createdAt\": \"2025-11-24 14:00:00\"\n" +
+                                            "    },\n" +
+                                            "    {\n" +
+                                            "      \"id\": 9,\n" +
+                                            "      \"amount\": 50,\n" +
+                                            "      \"description\": \"변론 작성\",\n" +
+                                            "      \"createdAt\": \"2025-11-24 13:30:00\"\n" +
+                                            "    }\n" +
+                                            "  ],\n" +
+                                            "  \"error\": null\n" +
+                                            "}")
+                    )
+            )
+    })
+    @GetMapping("/exp-history")
+    public ApiResponse<List<ExpHistoryResponseDto>> getExpHistory(@AuthenticationPrincipal(expression = "user") User user) {
+        Long userId = user.getId();
+        return mypageService.getExpHistory(userId);
+    }
 
     //로그인 및 스프링 세큐리티 구현 완료 후 파라미터 변경 예정 -완료-
     @Operation(summary = "유저 등급(랭크) 조회", description = "로그인한 유저의 현재 등급, 경험치, 랭크 이름을 조회합니다.")

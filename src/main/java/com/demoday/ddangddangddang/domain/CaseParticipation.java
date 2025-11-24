@@ -33,7 +33,7 @@ public class CaseParticipation {
     public CaseParticipation(User user, Case aCase) {
         this.user = user;
         this.aCase = aCase;
-        this.result = CaseResult.PENDING; // 처음 생성 시에는 '진행 중' 상태
+        this.result = CaseResult.ONGOING; // 처음 생성 시에는 '진행 중' 상태
     }
 
     // 결과 업데이트 메서드
