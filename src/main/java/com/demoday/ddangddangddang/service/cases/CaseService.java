@@ -89,7 +89,7 @@ public class CaseService {
         caseParticipationRepository.save(CaseParticipation.builder()
                 .aCase(newCase)
                 .user(user)
-                .result(CaseResult.PENDING)
+                .result(CaseResult.ONGOING)
                 .build()); // [수정] Result 추가
 
         List<ArgumentInitial> arguments = List.of(argumentA, argumentB);
@@ -137,7 +137,7 @@ public class CaseService {
         caseParticipationRepository.save(CaseParticipation.builder()
                 .aCase(newCase)
                 .user(user)
-                .result(CaseResult.PENDING).build());
+                .result(CaseResult.ONGOING).build());
 
         // VS 모드 사건 생성 시 +100 exp
         expService.addExp(user, 100L, "VS 모드 사건 생성");
@@ -186,7 +186,7 @@ public class CaseService {
         caseParticipationRepository.save(CaseParticipation.builder()
                 .aCase(aCase)
                 .user(user)
-                .result(CaseResult.PENDING)
+                .result(CaseResult.ONGOING)
                 .build());
 
         // 입장문 생성
