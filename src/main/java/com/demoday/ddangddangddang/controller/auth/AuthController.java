@@ -8,6 +8,8 @@ import com.demoday.ddangddangddang.dto.auth.SignupRequestDto;
 import com.demoday.ddangddangddang.dto.auth.TokenRefreshRequestDto;
 import com.demoday.ddangddangddang.dto.auth.LoginResponseDto;
 import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
+import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
+import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.service.auth.AuthService;
 import com.demoday.ddangddangddang.service.auth.EmailService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,14 +18,13 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -130,14 +131,29 @@ public class AuthController {
     })
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponseDto>> login(
-            @Valid @RequestBody LoginRequestDto requestDto
+            @Valid @RequestBody LoginRequestDto requestDto,
+            HttpServletResponse response // [변경] 쿠키를 담기 위해 response 객체 주입
     ) {
         LoginResponseDto loginResponse = authService.login(requestDto);
-        ApiResponse<LoginResponseDto> response = ApiResponse.onSuccess(
+
+        // [추가] 리프레시 토큰을 쿠키로 생성
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", loginResponse.getRefreshToken())
+                .path("/")
+                .sameSite("None")        // [중요] 서브 도메인 간(api <-> www) 공유를 위해 None
+                .httpOnly(true)          // [중요] 자바스크립트 접근 불가 (XSS 방지)
+                .secure(true)            // [중요] HTTPS 필수 (SameSite=None 쓰려면 필수)
+                .domain(".ddangx3.site")  // [매우 중요] 본인 도메인으로 수정하세요 (앞에 점 필수!)
+                .maxAge(60 * 60 * 24 * 7) // 7일 (본인 정책에 맞게 수정)
+                .build();
+
+        // 응답 헤더에 쿠키 추가
+        response.addHeader("Set-Cookie", cookie.toString());
+
+        ApiResponse<LoginResponseDto> apiResponse = ApiResponse.onSuccess(
                 "로그인에 성공하였습니다.",
                 loginResponse
         );
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(apiResponse);
     }
 
     @Operation(summary = "AccessToken 재발급", description = "RefreshToken을 사용하여 새 AccessToken을 발급받습니다.")
@@ -157,9 +173,21 @@ public class AuthController {
     })
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AccessTokenResponseDto>> refreshAccessToken(
-            @Valid @RequestBody TokenRefreshRequestDto requestDto
+            // [변경] RequestBody 대신 쿠키에서 직접 꺼냄
+            @CookieValue(name = "refresh_token", required = false) String refreshToken
     ) {
+        // 쿠키가 없는 경우 예외 처리
+        if (refreshToken == null) {
+            // GeneralErrorCode.INVALID_TOKEN 혹은 적절한 에러 코드로 변경하세요
+            throw new GeneralException(GeneralErrorCode.INVALID_TOKEN, "쿠키에 리프레시 토큰이 존재하지 않습니다.");
+        }
+
+        // 서비스 계층은 DTO를 받도록 되어 있으므로, DTO를 생성해서 값을 넣어줌
+        TokenRefreshRequestDto requestDto = new TokenRefreshRequestDto();
+        requestDto.setRefreshToken(refreshToken); // DTO에 Setter가 있어야 합니다!
+
         AccessTokenResponseDto responseDto = authService.refreshAccessToken(requestDto);
+
         ApiResponse<AccessTokenResponseDto> response = ApiResponse.onSuccess(
                 "액세스 토큰이 성공적으로 재발급되었습니다.",
                 responseDto
