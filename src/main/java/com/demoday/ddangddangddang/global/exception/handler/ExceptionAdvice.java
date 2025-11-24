@@ -6,8 +6,10 @@ import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.connector.ClientAbortException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,6 +45,28 @@ public class ExceptionAdvice {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.onFailure(code, errors));
+    }
+
+    /**
+     * DB 제약조건 위반 시 (중복 신고 등) 발생하는 예외 처리
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
+        log.warn("Data Integrity Violation: {}", e.getMessage());
+        // 이미 정의된 에러 코드 활용 (REPORT_ALREADY_EXISTS)
+        BaseErrorCode code = GeneralErrorCode.REPORT_ALREADY_EXISTS;
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.onFailure(code, "이미 처리된 요청이거나 중복된 데이터입니다."));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleJsonErrors(HttpMessageNotReadableException e) {
+        log.warn("JSON Parse Error: {}", e.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.onFailure(GeneralErrorCode.INVALID_PARAMETER, "입력값이 잘못되었습니다. (JSON 형식을 확인해주세요)"));
     }
 
     @ExceptionHandler(Exception.class)
