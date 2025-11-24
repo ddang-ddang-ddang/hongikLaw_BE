@@ -32,7 +32,7 @@ public class MainpageService {
         User user = userRepository.findById(userId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
 
-        List<CaseParticipation> participations = caseParticipationRepository.findByUserAndResult(user, CaseResult.PENDING);
+        List<CaseParticipation> participations = caseParticipationRepository.findByUserAndResult(user, CaseResult.ONGOING);
 
         List<CaseOnResponseDto> responseDtos = participations.stream()
                 .map(participation -> {
