@@ -218,13 +218,21 @@ public class DebateService {
     }
 
     /**
-     * 반론 목록 조회
+     * 반론 목록 조회 (수정됨)
      */
     @Transactional(readOnly = true)
     public List<RebuttalResponseDto> getRebuttalsByDefense(Long defenseId, User user) {
-        List<Rebuttal> rebuttals = rebuttalRepository.findAllByDefense_Id(defenseId);
-        Set<Long> userLikedRebuttalIds = likeRepository.findAllByUserAndContentType(user, ContentType.REBUTTAL)
-                .stream().map(Like::getContentId).collect(Collectors.toSet());
+        // 1. 블라인드 처리된 반론 제외
+        List<Rebuttal> rebuttals = rebuttalRepository.findAllByDefense_Id(defenseId).stream()
+                .filter(r -> !r.getIsBlind())
+                .collect(Collectors.toList());
+
+        // 2. 좋아요 여부 확인 (비로그인 유저 null 체크 추가)
+        Set<Long> userLikedRebuttalIds = (user != null) ?
+                likeRepository.findAllByUserAndContentType(user, ContentType.REBUTTAL)
+                        .stream().map(Like::getContentId).collect(Collectors.toSet())
+                : Set.of();
+
         return RebuttalResponseDto.buildTree(rebuttals, userLikedRebuttalIds);
     }
 
