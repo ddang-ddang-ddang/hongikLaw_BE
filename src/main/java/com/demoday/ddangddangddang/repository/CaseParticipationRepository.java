@@ -3,6 +3,7 @@ package com.demoday.ddangddangddang.repository;
 import com.demoday.ddangddangddang.domain.Case;
 import com.demoday.ddangddangddang.domain.CaseParticipation;
 import com.demoday.ddangddangddang.domain.User;
+import com.demoday.ddangddangddang.domain.enums.CaseMode;
 import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.CaseStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,4 +24,6 @@ public interface CaseParticipationRepository extends JpaRepository<CaseParticipa
     Integer countByUser(User user);
 
     Integer countByUserAndResult(User user, CaseResult caseResult);
+
+    Integer countByUserAndACase_Mode(User user, CaseMode aCaseMode);
 }

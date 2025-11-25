@@ -4,6 +4,7 @@ import com.demoday.ddangddangddang.domain.Defense;
 import com.demoday.ddangddangddang.domain.Rebuttal;
 import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.domain.UserAchievement;
+import com.demoday.ddangddangddang.domain.enums.CaseMode;
 import com.demoday.ddangddangddang.domain.enums.CaseResult;
 import com.demoday.ddangddangddang.domain.enums.ContentType;
 import com.demoday.ddangddangddang.domain.enums.achieve.AchieveEnum;
@@ -58,11 +59,11 @@ public class AchievementEventListener {
         User user = event.getUser();
 
         // 1. 현재 유저의 사건 생성 횟수 조회 (DB 부하를 줄이려면 count 쿼리 최적화 필요)
-        Integer caseCount = caseParticipationRepository.countByUser(user);
+        Integer caseCount = caseParticipationRepository.countByUserAndACase_Mode(user, CaseMode.PARTY);
 
         // 2. 조건 체크 및 업적 지급
         if (caseCount == 1) {
-            giveAchievement(user, AchieveEnum.FIRST_VS);
+            giveAchievement(user,AchieveEnum.FIRST_VS);
         }
     }
 
