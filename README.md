@@ -6,8 +6,8 @@
 > 사용자가 제기한 밸런스 게임 안건에 대해 **AI가 즉결 심판**을 내리고,  
 > 유저들이 변호사가 되어 **토론 및 투표**를 통해 최종 판결을 내리는 **AI 기반 법정 토론 플랫폼**입니다.
 
-Client : https://ddang-ddang-ddang-fe-8npo.vercel.app/<br>
-Server : https://ddangx3.site/
+Client : https://ddangx3.site/ <br>
+Server : https://api.ddangx3.site/
 
 ## 📖 프로젝트 소개
 
