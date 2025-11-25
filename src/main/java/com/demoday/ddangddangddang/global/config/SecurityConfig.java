@@ -98,7 +98,8 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "https://ddang-ddang-ddang-fe-8npo.vercel.app/",
                 "https://api.ddangx3.site",
-                "https://web.ddangx3.site"
+                "https://web.ddangx3.site",
+                "https://www.ddangx3.site"
         ));
         config.setAllowedMethods(java.util.List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         config.setAllowedHeaders(java.util.List.of("*"));
