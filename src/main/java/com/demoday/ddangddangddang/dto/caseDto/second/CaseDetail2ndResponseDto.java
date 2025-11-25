@@ -127,16 +127,21 @@ public class CaseDetail2ndResponseDto {
 
         // 4. 변론 DTO 생성
         List<DefenseDto> defenseDtos = defenseList.stream()
-                .map(defense -> DefenseDto.builder()
-                        .defenseId(defense.getId())
-                        .authorNickname(defense.getUser().getNickname())
-                        .authorRank(defense.getUser().getRank().getDisplayName())
-                        .side(defense.getType())
-                        .content(defense.getContent())
-                        .likesCount(defense.getLikesCount())
-                        .isLikedByMe(userLikedDefenseIds.contains(defense.getId()))
-                        .rebuttals(topLevelRebuttalsByDefenseId.getOrDefault(defense.getId(), List.of()))
-                        .build())
+                .map(defense -> {
+                    // [수정]
+                    String content = defense.getIsBlind() ? "블라인드 처리된 내용입니다." : defense.getContent();
+
+                    return DefenseDto.builder()
+                            .defenseId(defense.getId())
+                            .authorNickname(defense.getUser().getNickname())
+                            .authorRank(defense.getUser().getRank().getDisplayName())
+                            .side(defense.getType())
+                            .content(content) // 마스킹
+                            .likesCount(defense.getLikesCount())
+                            .isLikedByMe(userLikedDefenseIds.contains(defense.getId()))
+                            .rebuttals(topLevelRebuttalsByDefenseId.getOrDefault(defense.getId(), List.of()))
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         // 5. 최종 DTO 빌드

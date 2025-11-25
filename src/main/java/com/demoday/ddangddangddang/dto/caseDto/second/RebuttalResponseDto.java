@@ -23,28 +23,33 @@ public class RebuttalResponseDto {
     private String content;
     private Integer likesCount;
     private Boolean isLikedByMe;
+    private Boolean isBlind;
     private List<RebuttalResponseDto> children; // 중첩 대댓글
 
     // 엔티티 리스트 -> 중첩 DTO 리스트로 변환하는 헬퍼 메서드
     public static List<RebuttalResponseDto> buildTree(List<Rebuttal> rebuttals, Set<Long> userLikedRebuttalIds) {
 
-        // 1. 모든 반론을 DTO 맵으로 변환
         Map<Long, RebuttalResponseDto> dtoMap = rebuttals.stream()
-                .map(rebuttal -> RebuttalResponseDto.builder()
-                        .rebuttalId(rebuttal.getId())
-                        .parentId(rebuttal.getParent() != null ? rebuttal.getParent().getId() : null)
-                        .authorNickname(rebuttal.getUser().getNickname())
-                        .authorProfileUrl(rebuttal.getUser().getProfileImageUrl())
-                        .authorRank(rebuttal.getUser().getRank().getDisplayName())
-                        .type(rebuttal.getType())
-                        .content(rebuttal.getContent())
-                        .likesCount(rebuttal.getLikesCount())
-                        .isLikedByMe(userLikedRebuttalIds.contains(rebuttal.getId()))
-                        .children(new ArrayList<>()) // 자식 리스트 초기화
-                        .build())
+                .map(rebuttal -> {
+                    // 블라인드 마스킹 로직
+                    String displayContent = rebuttal.getIsBlind() ? "블라인드 처리된 내용입니다." : rebuttal.getContent();
+
+                    return RebuttalResponseDto.builder()
+                            .rebuttalId(rebuttal.getId())
+                            .parentId(rebuttal.getParent() != null ? rebuttal.getParent().getId() : null)
+                            .authorNickname(rebuttal.getUser().getNickname())
+                            .authorProfileUrl(rebuttal.getUser().getProfileImageUrl())
+                            .authorRank(rebuttal.getUser().getRank().getDisplayName())
+                            .type(rebuttal.getType())
+                            .content(displayContent) // 마스킹된 내용 적용
+                            .likesCount(rebuttal.getLikesCount())
+                            .isLikedByMe(userLikedRebuttalIds.contains(rebuttal.getId()))
+                            .isBlind(rebuttal.getIsBlind())
+                            .children(new ArrayList<>())
+                            .build();
+                })
                 .collect(Collectors.toMap(RebuttalResponseDto::getRebuttalId, dto -> dto));
 
-        // 2. 부모-자식 관계 설정
         dtoMap.values().stream()
                 .filter(dto -> dto.getParentId() != null)
                 .forEach(dto -> {
@@ -54,7 +59,6 @@ public class RebuttalResponseDto {
                     }
                 });
 
-        // 3. 최상위 댓글(부모가 없는)만 필터링하여 반환
         return dtoMap.values().stream()
                 .filter(dto -> dto.getParentId() == null)
                 .collect(Collectors.toList());

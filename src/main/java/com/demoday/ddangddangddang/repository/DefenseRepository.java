@@ -18,8 +18,8 @@ public interface DefenseRepository extends JpaRepository<Defense,Long>{
     // MyPage/본인 이력 조회를 위해 원본 메서드를 유지
     List<Defense> findDefenseByUser(User user);
 
-    // DebateService 사용. BLIND 미포함
-    List<Defense> findAllByaCase_IdAndIsBlindFalse(Long caseId);
+    // 토론장 조회를 위해 블라인드 여부 상관없이 모두 가져오는 메서드 추가
+    List<Defense> findAllByaCase_Id(Long caseId);
 
     // 추천수 상위 N개 조회. BLIND 미포함
     List<Defense> findTop5ByaCase_IdAndIsBlindFalseOrderByLikesCountDesc(Long caseId);
