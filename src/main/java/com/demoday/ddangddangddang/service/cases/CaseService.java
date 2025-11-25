@@ -8,6 +8,7 @@ import com.demoday.ddangddangddang.domain.event.CaseParticipationEvent;
 import com.demoday.ddangddangddang.dto.ai.AiJudgmentDto;
 import com.demoday.ddangddangddang.dto.caseDto.*;
 import com.demoday.ddangddangddang.dto.caseDto.party.CasePendingResponseDto;
+import com.demoday.ddangddangddang.dto.home.CaseOnResponseDto;
 import com.demoday.ddangddangddang.dto.notice.NotificationResponseDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
@@ -25,6 +26,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -326,5 +328,46 @@ public class CaseService {
     private Case findCaseById(Long caseId) {
         return caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "사건을 찾을 수 없습니다."));
+    }
+
+    // [추가] 사건 검색 메서드
+    @Transactional(readOnly = true)
+    public List<CaseOnResponseDto> searchCases(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "검색어를 입력해주세요.");
+        }
+
+        // Repository에서 키워드로 검색
+        List<Case> foundCases = caseRepository.findByTitleContainingOrderByCreatedAtDesc(keyword);
+
+        // 엔티티 리스트를 DTO 리스트로 변환
+        return convertToDto(foundCases);
+    }
+
+    // 엔티티 리스트를 DTO 리스트로 변환하는 헬퍼 메서드 (private)
+    private List<CaseOnResponseDto> convertToDto(List<Case> cases) {
+        if (cases.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // N+1 문제 방지를 위해 검색된 모든 Case의 입장문을 한 번에 조회
+        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseInOrderByTypeAsc(cases);
+
+        // Case ID별로 입장문(MainArgument) 리스트를 그룹핑
+        Map<Long, List<String>> argumentsMap = arguments.stream()
+                .collect(Collectors.groupingBy(
+                        arg -> arg.getACase().getId(),
+                        Collectors.mapping(ArgumentInitial::getMainArgument, Collectors.toList())
+                ));
+
+        // Case 리스트를 DTO로 변환
+        return cases.stream()
+                .map(aCase -> CaseOnResponseDto.builder()
+                        .caseId(aCase.getId())
+                        .title(aCase.getTitle())
+                        .status(aCase.getStatus())
+                        .mainArguments(argumentsMap.getOrDefault(aCase.getId(), Collections.emptyList()))
+                        .build())
+                .collect(Collectors.toList());
     }
 }
