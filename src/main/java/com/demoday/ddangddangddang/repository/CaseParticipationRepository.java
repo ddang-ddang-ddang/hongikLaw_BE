@@ -25,5 +25,6 @@ public interface CaseParticipationRepository extends JpaRepository<CaseParticipa
 
     Integer countByUserAndResult(User user, CaseResult caseResult);
 
-    Integer countByUserAndACase_Mode(User user, CaseMode aCaseMode);
+    @Query("SELECT COUNT(cp) FROM CaseParticipation cp WHERE cp.user = :user AND cp.aCase.mode = :mode")
+    Long countByUserAndMode(@Param("user") User user, @Param("mode") CaseMode mode);
 }
