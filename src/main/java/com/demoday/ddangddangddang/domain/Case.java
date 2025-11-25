@@ -68,4 +68,11 @@ public class Case extends BaseEntity {
     public void setThird() {
         this.status = CaseStatus.THIRD;
     }
+
+    @PrePersist
+    public void setDefaultAppealDeadline() {
+        if (this.appealDeadline == null) {
+            this.appealDeadline = LocalDateTime.now().plusHours(24);
+        }
+    }
 }

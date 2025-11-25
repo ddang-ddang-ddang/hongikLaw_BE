@@ -65,35 +65,43 @@ public class MainpageService {
         User user = userRepository.findById(userId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.USER_NOT_FOUND,"유저를 찾을 수 없습니다."));
 
-        // [FIX] DefenseRepository에 findDefenseByUser(User user)를 다시 정의했으므로 에러 해결
         List<Defense> defenses = defenseRepository.findDefenseByUser(user);
-
         List<Rebuttal> rebuttals = rebuttalRepository.findRebuttalByUser(user);
 
         List<UserDefenseRebuttalResponseDto.DefenseDto> defenseDtos = defenses.stream()
-                .map(defense -> UserDefenseRebuttalResponseDto.DefenseDto.builder()
-                        .caseId(defense.getACase().getId())
-                        .title(defense.getACase().getTitle())
-                        .defenseId(defense.getId())
-                        .debateSide(defense.getType())
-                        .content(defense.getContent())
-                        .likeCount(defense.getLikesCount())
-                        .caseResult(defense.getCaseResult())
-                        .isBlind(defense.getIsBlind())
-                        .build())
+                .map(defense -> {
+                    // [수정] 마이페이지에서도 블라인드 처리된 내용 표시
+                    String content = defense.getIsBlind() ? "블라인드 처리된 내용입니다." : defense.getContent();
+
+                    return UserDefenseRebuttalResponseDto.DefenseDto.builder()
+                            .caseId(defense.getACase().getId())
+                            .title(defense.getACase().getTitle())
+                            .defenseId(defense.getId())
+                            .debateSide(defense.getType())
+                            .content(content) // 마스킹 적용
+                            .likeCount(defense.getLikesCount())
+                            .caseResult(defense.getCaseResult())
+                            .isBlind(defense.getIsBlind())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         List<UserDefenseRebuttalResponseDto.RebuttalDto> rebuttalDtos = rebuttals.stream()
-                .map(rebuttal -> UserDefenseRebuttalResponseDto.RebuttalDto.builder()
-                        .caseId(rebuttal.getDefense().getACase().getId())
-                        .defenseId(rebuttal.getId())
-                        .rebuttalId(rebuttal.getId())
-                        .debateSide(rebuttal.getType())
-                        .content(rebuttal.getContent())
-                        .likeCount(rebuttal.getLikesCount())
-                        .caseResult(rebuttal.getCaseResult())
-                        .isBlind(rebuttal.getIsBlind())
-                        .build())
+                .map(rebuttal -> {
+                    // [수정] 마이페이지에서도 블라인드 처리된 내용 표시
+                    String content = rebuttal.getIsBlind() ? "블라인드 처리된 내용입니다." : rebuttal.getContent();
+
+                    return UserDefenseRebuttalResponseDto.RebuttalDto.builder()
+                            .caseId(rebuttal.getDefense().getACase().getId())
+                            .defenseId(rebuttal.getId())
+                            .rebuttalId(rebuttal.getId())
+                            .debateSide(rebuttal.getType())
+                            .content(content) // 마스킹 적용
+                            .likeCount(rebuttal.getLikesCount())
+                            .caseResult(rebuttal.getCaseResult())
+                            .isBlind(rebuttal.getIsBlind())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         UserDefenseRebuttalResponseDto responseDto = UserDefenseRebuttalResponseDto.builder()

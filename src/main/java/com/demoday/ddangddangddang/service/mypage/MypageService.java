@@ -91,8 +91,14 @@ public class MypageService {
         // 1. 참여 기록 조회
         List<CaseParticipation> participations = caseParticipationRepository.findByUser(user);
 
-        // 2. 참여한 모든 Case 추출
-        List<Case> cases = participations.stream()
+        // [추가] 최신순 정렬 (Case의 CreatedAt 내림차순)
+        // BaseEntity의 createdAt을 사용하여 비교합니다.
+        List<CaseParticipation> sortedParticipations = participations.stream()
+                .sorted((p1, p2) -> p2.getACase().getCreatedAt().compareTo(p1.getACase().getCreatedAt()))
+                .toList();
+
+        // 2. 참여한 모든 Case 추출 (정렬된 리스트 사용)
+        List<Case> cases = sortedParticipations.stream()
                 .map(CaseParticipation::getACase)
                 .toList();
 
@@ -106,8 +112,8 @@ public class MypageService {
                         Collectors.mapping(ArgumentInitial::getMainArgument, Collectors.toList())
                 ));
 
-        // 5. DTO 변환 (이제 반복문 안에서 DB 조회를 하지 않음)
-        List<UserArchiveResponseDto> responseDtos = participations.stream()
+        // 5. DTO 변환 (정렬된 sortedParticipations 사용)
+        List<UserArchiveResponseDto> responseDtos = sortedParticipations.stream()
                 .map(participation -> {
                     Case aCase = participation.getACase();
 

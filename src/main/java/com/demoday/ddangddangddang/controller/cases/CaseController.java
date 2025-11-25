@@ -27,7 +27,17 @@ public class CaseController {
 
     private final CaseService caseService;
 
-    // --- [ 1차 재판 API (기존) ] ---
+    // --- [ 1차 재판 API ] ---
+
+    // 사건 검색 API
+    @Operation(summary = "사건 검색", description = "제목에 포함된 키워드로 사건을 검색합니다. (최신순 정렬)")
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<CaseOnResponseDto>>> searchCases(
+            @RequestParam(name = "keyword") String keyword
+    ) {
+        List<CaseOnResponseDto> responseDto = caseService.searchCases(keyword);
+        return ResponseEntity.ok(ApiResponse.onSuccess("사건 검색 성공", responseDto));
+    }
 
     @Operation(summary = "1차 재판(초심) 생성 (솔로/VS 모드)", description = "mode: SOLO(솔로), PARTY(VS모드)")
     @SecurityRequirement(name = "JWT TOKEN")

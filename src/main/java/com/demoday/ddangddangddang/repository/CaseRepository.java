@@ -21,6 +21,9 @@ public interface CaseRepository extends JpaRepository<Case,Long> {
 
     List<Case> findByAppealDeadlineBeforeAndStatus(LocalDateTime threshold, CaseStatus status);
 
+    // 제목에 키워드가 포함된 사건 검색 (최신순 정렬)
+    List<Case> findByTitleContainingOrderByCreatedAtDesc(String keyword);
+
     // 상태가 일치하고, AppealDeadline이 Null이 아닌(2차 재판을 겪은) 사건 조회
     List<Case> findAllByStatusAndAppealDeadlineIsNotNullOrderByCreatedAtDesc(CaseStatus status);
 

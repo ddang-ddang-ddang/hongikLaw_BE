@@ -51,12 +51,13 @@ public class ReportService {
                 .customReason(requestDto.getCustomReason())
                 .build();
 
-        Report savedReport = reportRepository.save(report);
+        // saveAndFlush를 사용하여 DB에 즉시 반영 (count 쿼리 정합성 보장)
+        Report savedReport = reportRepository.saveAndFlush(report);
 
         // 4. 현재 누적 신고 횟수 조회 (방금 저장한 것 포함)
         long currentReportCount = reportRepository.countByContentIdAndContentType(requestDto.getContentId(), requestDto.getContentType());
 
-        // 5. Slack 알림 전송 (내용 및 카운트 포함)
+        // 5. Slack 알림 전송
         slackNotificationService.sendReportNotification(savedReport, reporter.getNickname(), reportedContent, currentReportCount);
 
         // 6. 누적 신고 횟수 확인 및 BLIND 처리
@@ -123,17 +124,22 @@ public class ReportService {
 
     // 파라미터로 count를 받아서 처리하도록 최적화
     private void processBlindStatus(Long contentId, ContentType contentType, long reportCount) {
+        // [로직 확인] 신고 횟수가 임계값(3) 이상이면 블라인드 처리
         if (reportCount >= BLIND_THRESHOLD) {
             if (contentType == ContentType.DEFENSE) {
                 defenseRepository.findById(contentId).ifPresent(defense -> {
                     if (!defense.getIsBlind()) {
                         defense.markAsBlind();
+                        // [권장] Dirty Checking에 의존하지 않고 명시적으로 저장하여 확실하게 업데이트
+                        defenseRepository.save(defense);
                     }
                 });
             } else if (contentType == ContentType.REBUTTAL) {
                 rebuttalRepository.findById(contentId).ifPresent(rebuttal -> {
                     if (!rebuttal.getIsBlind()) {
                         rebuttal.markAsBlind();
+                        // [권장] 명시적 저장
+                        rebuttalRepository.save(rebuttal);
                     }
                 });
             }
@@ -143,9 +149,15 @@ public class ReportService {
     // [추가] 블라인드 해제 로직
     private void unblindContent(Long contentId, ContentType contentType) {
         if (contentType == ContentType.DEFENSE) {
-            defenseRepository.findById(contentId).ifPresent(Defense::unmarkAsBlind); // Defense 엔티티에 메서드 필요
+            defenseRepository.findById(contentId).ifPresent(defense -> {
+                defense.unmarkAsBlind();
+                defenseRepository.save(defense); // 명시적 저장
+            });
         } else if (contentType == ContentType.REBUTTAL) {
-            rebuttalRepository.findById(contentId).ifPresent(Rebuttal::unmarkAsBlind); // Rebuttal 엔티티에 메서드 필요
+            rebuttalRepository.findById(contentId).ifPresent(rebuttal -> {
+                rebuttal.unmarkAsBlind();
+                rebuttalRepository.save(rebuttal); // 명시적 저장
+            });
         }
     }
 }
