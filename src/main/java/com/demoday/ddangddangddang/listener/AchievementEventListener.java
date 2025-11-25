@@ -59,7 +59,7 @@ public class AchievementEventListener {
         User user = event.getUser();
 
         // 1. 현재 유저의 사건 생성 횟수 조회 (DB 부하를 줄이려면 count 쿼리 최적화 필요)
-        Integer caseCount = caseParticipationRepository.countByUserAndACase_Mode(user, CaseMode.PARTY);
+        Long caseCount = caseParticipationRepository.countByUserAndMode(user, CaseMode.PARTY);
 
         // 2. 조건 체크 및 업적 지급
         if (caseCount == 1) {
