@@ -111,12 +111,12 @@ public class AchievementEventListener {
         User user = event.getUser();
         ContentType contentType = event.getContentType();
 
-        Integer defenseCount = 0;
+        Long defenseCount = 0L;
         Integer rebuttalCount = 0;
 
         // 1. 현재 유저의 사건 생성 횟수 조회 (DB 부하를 줄이려면 count 쿼리 최적화 필요)
         if(contentType == ContentType.DEFENSE){
-            defenseCount = caseParticipationRepository.countByUser(user);
+            defenseCount = defenseRepository.countByUser(user);
         }
         else {
             rebuttalCount = rebuttalRepository.countByUser(user);

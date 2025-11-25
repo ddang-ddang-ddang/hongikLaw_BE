@@ -57,4 +57,6 @@ public interface DefenseRepository extends JpaRepository<Defense,Long>{
     Integer sumLikesByUser(@Param("user") User user);
 
     List<Defense> findAllByaCase_IdAndTypeAndIsAdoptedTrue(Long caseId, DebateSide type);
+
+    Long countByUser(User user);
 }
