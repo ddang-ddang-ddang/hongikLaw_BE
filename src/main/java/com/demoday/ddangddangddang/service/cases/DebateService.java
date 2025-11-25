@@ -118,13 +118,12 @@ public class DebateService {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "비공개 종료된 사건입니다.");
         }
 
-        // 1. 변론 조회 (BLIND 제외)
-        List<Defense> defenseList = defenseRepository.findAllByaCase_IdAndIsBlindFalse(caseId);
+        // 1. 변론 조회 (수정: BLIND 포함 모든 변론 조회)
+        // 기존: defenseRepository.findAllByaCase_IdAndIsBlindFalse(caseId);
+        List<Defense> defenseList = defenseRepository.findAllByaCase_Id(caseId);
 
-        // 2. 반론 조회 (BLIND 제외)
-        List<Rebuttal> rebuttalList = rebuttalRepository.findAllByDefense_aCase_Id(caseId).stream()
-                .filter(r -> !r.getIsBlind())
-                .collect(Collectors.toList());
+        // 2. 반론 조회 (수정: BLIND 필터링 제거)
+        List<Rebuttal> rebuttalList = rebuttalRepository.findAllByDefense_aCase_Id(caseId);
 
         // 3. 유저 관련 정보 (Vote, Like) - 비로그인(Guest) 처리
         Vote userVote = null;
@@ -196,16 +195,18 @@ public class DebateService {
             throw new GeneralException(GeneralErrorCode.FORBIDDEN, "공개되지 않은 재판입니다.");
         }
 
-        List<Defense> defenses = defenseRepository.findAllByaCase_IdAndIsBlindFalse(caseId);
+        // [수정] BLIND 포함 조회
+        List<Defense> defenses = defenseRepository.findAllByaCase_Id(caseId);
 
         Set<Long> userLikedDefenseIds = (user != null) ?
                 likeRepository.findAllByUserAndContentType(user, ContentType.DEFENSE)
                         .stream().map(Like::getContentId).collect(Collectors.toSet())
                 : Set.of();
 
+        // [수정] 반론 개수 계산 시에도 블라인드된 반론을 포함할지 결정해야 함 (보통 포함)
         Map<Long, Long> rebuttalCounts = rebuttalRepository.findAllByDefense_aCase_Id(caseId)
                 .stream()
-                .filter(r -> !r.getIsBlind())
+                // .filter(r -> !r.getIsBlind()) // <-- 필터 제거 (개수에도 포함)
                 .collect(Collectors.groupingBy(r -> r.getDefense().getId(), Collectors.counting()));
 
         return defenses.stream()
@@ -222,10 +223,8 @@ public class DebateService {
      */
     @Transactional(readOnly = true)
     public List<RebuttalResponseDto> getRebuttalsByDefense(Long defenseId, User user) {
-        // 1. 블라인드 처리된 반론 제외
-        List<Rebuttal> rebuttals = rebuttalRepository.findAllByDefense_Id(defenseId).stream()
-                .filter(r -> !r.getIsBlind())
-                .collect(Collectors.toList());
+        // 1. 블라인드 포함 모든 반론 조회
+        List<Rebuttal> rebuttals = rebuttalRepository.findAllByDefense_Id(defenseId);
 
         // 2. 좋아요 여부 확인 (비로그인 유저 null 체크 추가)
         Set<Long> userLikedRebuttalIds = (user != null) ?
