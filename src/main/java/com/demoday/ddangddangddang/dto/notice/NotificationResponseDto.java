@@ -14,4 +14,5 @@ public class NotificationResponseDto {
     private Long rebuttalId;
     private String message;
     private String iconUrl;
+    private Long judgementId;
 }
