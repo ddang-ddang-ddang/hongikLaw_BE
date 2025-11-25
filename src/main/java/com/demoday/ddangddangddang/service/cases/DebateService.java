@@ -75,8 +75,8 @@ public class DebateService {
 
         foundCase.startAppeal(deadline);
 
-        // 2차 재판 시작 시, 1차 판결문 기반으로 '최종심' 판결문 생성 (이후 계속 업데이트됨)
-        Judgment initialJudgment = judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.INITIAL)
+        // [수정] 중복 방지를 위해 findTop 사용
+        Judgment initialJudgment = judgmentRepository.findTopByaCase_IdAndStageOrderByCreatedAtDesc(caseId, JudgmentStage.INITIAL)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INTERNAL_SERVER_ERROR, "1차 판결문이 없습니다."));
 
         // 1차 판결문의 텍스트(basedOn)를 그대로 복사하지 않고, 빈 JSON 구조를 넣어줍니다.
@@ -131,7 +131,9 @@ public class DebateService {
         Set<Long> userLikedRebuttalIds = Set.of();
 
         if (user != null) {
-            userVote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId()).orElse(null);
+            // findBy... -> findTopBy...OrderByVotedAtDesc 로 변경하여 중복 투표 데이터 오류 방지
+            userVote = voteRepository.findTopByaCase_IdAndUser_IdOrderByVotedAtDesc(caseId, user.getId()).orElse(null);
+
             userLikedDefenseIds = likeRepository.findAllByUserAndContentType(user, ContentType.DEFENSE)
                     .stream().map(Like::getContentId).collect(Collectors.toSet());
             userLikedRebuttalIds = likeRepository.findAllByUserAndContentType(user, ContentType.REBUTTAL)
@@ -140,7 +142,7 @@ public class DebateService {
 
         // 4. 판결문 조회 (최종심 우선, 없으면 초심)
         Judgment finalJudgment = judgmentRepository.findTopByaCase_IdAndStageOrderByCreatedAtDesc(caseId, JudgmentStage.FINAL)
-                .orElse(judgmentRepository.findByaCase_IdAndStage(caseId, JudgmentStage.INITIAL).orElse(null));
+                .orElse(judgmentRepository.findTopByaCase_IdAndStageOrderByCreatedAtDesc(caseId, JudgmentStage.INITIAL).orElse(null));
 
         // 5. 1차 입장문 조회 및 매핑
         List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
@@ -324,13 +326,12 @@ public class DebateService {
         User managedUser = userRepository.findById(user.getId())
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
 
-        Vote vote = voteRepository.findByaCase_IdAndUser_Id(caseId, user.getId())
+        Vote vote = voteRepository.findTopByaCase_IdAndUser_IdOrderByVotedAtDesc(caseId, user.getId())
                 .map(existingVote -> {
                     existingVote.updateChoice(requestDto.getChoice());
                     return existingVote;
                 })
                 .orElseGet(() -> {
-                    // [수정 후] 첫 투표일 때만 지급
                     expService.addExp(managedUser, 10L, "투표 참여");
                     return Vote.builder()
                             .aCase(aCase)
