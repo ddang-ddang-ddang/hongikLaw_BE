@@ -150,7 +150,7 @@ GitHub Main 브랜치에 코드가 푸시되면, **GitHub Actions**가 자동으
 
 서버 실행 후 아래 주소에서 **Swagger UI**를 통해 API 명세를 확인하고 테스트할 수 있습니다.
 
-  * **Swagger URL**: `https://ddangx3.site/swagger-ui/index.html`
+  * **Swagger URL**: `https://api.ddangx3.site/swagger-ui/index.html`
       * *(로컬 환경: `http://localhost:8080/swagger-ui/index.html`)*
 
 

@@ -52,7 +52,9 @@ public class JudgmentAsyncExecutor {
                 Long userId = participation.getUser().getId();
 
                 NotificationResponseDto dto = NotificationResponseDto.builder()
-                        .message(String.valueOf(judgmentId))
+                        .message("판결이 완료되었습니다.")
+                        .caseId(context.getACase().getId())
+                        .judgementId(judgmentId)
                         .iconUrl("https://ddangddangddang-demoday.s3.ap-northeast-2.amazonaws.com/icons/gavel.png")
                         .build();
                 // 유저별 연결에 'judgment_complete' 이벤트 전송
