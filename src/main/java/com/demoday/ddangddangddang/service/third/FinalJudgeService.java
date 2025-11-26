@@ -114,6 +114,9 @@ public class FinalJudgeService {
         // 정산 로직 (N+1 최적화 없이 유지)
         settleResults(foundCase, winSide, adoptedDefenses, adoptedRebuttals);
 
+        // 사건 상태를 DONE으로 변경하여 종료 처리
+        foundCase.updateStatus(CaseStatus.DONE);
+
         return finalJudgment.getId();
     }
 
