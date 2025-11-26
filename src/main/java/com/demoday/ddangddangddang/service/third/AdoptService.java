@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.service.third;
 
 import com.demoday.ddangddangddang.domain.*;
+import com.demoday.ddangddangddang.domain.enums.CaseMode;
 import com.demoday.ddangddangddang.domain.enums.ContentType;
 import com.demoday.ddangddangddang.domain.enums.DebateSide;
 import com.demoday.ddangddangddang.domain.event.AdoptedEvent;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -40,23 +42,34 @@ public class AdoptService {
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        //유저가 initial한 사건인지 확인
+        // 유저가 initial한 사건인지 확인 (권한 체크)
         List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
-
-        //하나라도 유저가 참여한 항목 반환
         ArgumentInitial userInitialArgument = allInitialArguments.stream()
                 .filter(arg -> arg.getUser().getId().equals(userId))
                 .findFirst()
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
 
-        //유저 진영 확인
-        DebateSide type = userInitialArgument.getType();
+        List<Defense> allDefenses;
+        List<Rebuttal> allRebuttals;
 
-        // [FIX for error 50] BLIND 미포함 메서드 사용
-        List<Defense> allDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsBlindFalse(caseId, type);
+        // 솔로 모드면 전체 조회, 파티 모드면 내 진영만 조회
+        if (aCase.getMode() == CaseMode.SOLO) {
+            // 솔로 모드: 진영 상관없이 블라인드 안 된 모든 목록 조회
+            // (DefenseRepository에 findAllByaCase_IdAndIsBlindFalseOrderByLikesCountDesc 같은 메서드가 없다면 아래처럼 스트림 필터링하거나 레포지토리 메서드 추가 필요)
+            // 여기서는 기존 메서드 활용 + 스트림 필터링 예시
+            allDefenses = defenseRepository.findAllByaCase_Id(caseId).stream()
+                    .filter(d -> !d.getIsBlind())
+                    .toList();
 
-        // [RebuttalRepository의 변경도 반영 필요] BLIND 미포함 메서드 사용
-        List<Rebuttal> allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(caseId, type);
+            allRebuttals = rebuttalRepository.findAllByDefense_aCase_Id(caseId).stream()
+                    .filter(r -> !r.getIsBlind())
+                    .toList();
+        } else {
+            // 파티(VS) 모드: 내 진영만 조회 (기존 로직)
+            DebateSide type = userInitialArgument.getType();
+            allDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsBlindFalse(caseId, type);
+            allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(caseId, type);
+        }
 
         Stream<AdoptableItemDto> defenseStream = allDefenses.stream()
                 .map(d -> AdoptableItemDto.builder()
@@ -133,7 +146,7 @@ public class AdoptService {
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        // 유저 진영 파악
+        // 유저 권한 및 진영 파악
         List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
         ArgumentInitial userInitialArgument = allInitialArguments.stream()
                 .filter(arg -> arg.getUser().getId().equals(userId))
@@ -141,31 +154,42 @@ public class AdoptService {
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
 
         DebateSide mySide = userInitialArgument.getType();
+        boolean isSoloMode = (aCase.getMode() == CaseMode.SOLO);
 
         // 1. 기존 채택 내역 조회 (내 진영)
         List<Defense> alreadyAdoptedDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
         List<Rebuttal> alreadyAdoptedRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
 
-        // ★ 핵심 로직: 기존에 하나라도 채택된 게 있었다면, 이번 요청은 '수정'이다.
+        if (isSoloMode) {
+            // [수정] 솔로 모드: 진영 상관없이 이 사건에서 채택된 모든 것 조회
+            alreadyAdoptedDefenses = defenseRepository.findByaCase_IdAndIsAdoptedAndIsBlindFalse(caseId, true);
+            alreadyAdoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
+        } else {
+            // 파티 모드: 내 진영 것만 조회
+            alreadyAdoptedDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
+            alreadyAdoptedRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsAdoptedTrue(caseId, mySide);
+        }
+
+        // 수정 모드 여부 확인
         boolean isEditMode = (!alreadyAdoptedDefenses.isEmpty() || !alreadyAdoptedRebuttals.isEmpty());
 
-        // 2. 기존 채택 해제 (경험치 회수 로직 삭제됨)
+        // 기존 채택 해제
         for (Defense oldDefense : alreadyAdoptedDefenses) {
-            oldDefense.markAsAdoptedFalse(); // isAdopted = false 만 수행
+            oldDefense.markAsAdoptedFalse();
         }
         for (Rebuttal oldRebuttal : alreadyAdoptedRebuttals) {
-            oldRebuttal.markAsAdoptedFalse(); // isAdopted = false 만 수행
+            oldRebuttal.markAsAdoptedFalse();
         }
 
-        // 3. 새로운 Defense 채택 적용
+// 2. 새로운 Defense 채택 적용
         List<Long> defenseIds = adoptRequestDto.getDefenseId();
         if (defenseIds != null && !defenseIds.isEmpty()) {
             List<Defense> defensesToAdopt = defenseRepository.findAllById(defenseIds);
             for (Defense defense : defensesToAdopt) {
-                if (defense.getType() == mySide) {
-                    defense.markAsAdopted(); // 채택 마크
+                // [수정] 솔로 모드이거나, 파티 모드일 때 내 진영과 같으면 채택
+                if (isSoloMode || defense.getType() == mySide) {
+                    defense.markAsAdopted();
 
-                    // ★ 수정 모드가 아닐 때(최초 채택일 때)만 경험치 지급
                     if (!isEditMode) {
                         expService.addExp(defense.getUser(), 100L, "변론 채택됨 (작성자)");
                         eventPublisher.publishEvent(new AdoptedEvent(defense.getUser(), ContentType.DEFENSE));
@@ -174,15 +198,15 @@ public class AdoptService {
             }
         }
 
-        // 4. 새로운 Rebuttal 채택 적용
+// 3. 새로운 Rebuttal 채택 적용
         List<Long> rebuttalIds = adoptRequestDto.getRebuttalId();
         if (rebuttalIds != null && !rebuttalIds.isEmpty()) {
             List<Rebuttal> rebuttalsToAdopt = rebuttalRepository.findAllById(rebuttalIds);
             for (Rebuttal rebuttal : rebuttalsToAdopt) {
-                if (rebuttal.getType() == mySide) {
-                    rebuttal.markAsAdopted(); // 채택 마크
+                // [수정] 솔로 모드이거나, 파티 모드일 때 내 진영과 같으면 채택
+                if (isSoloMode || rebuttal.getType() == mySide) {
+                    rebuttal.markAsAdopted();
 
-                    // ★ 수정 모드가 아닐 때(최초 채택일 때)만 경험치 지급
                     if (!isEditMode) {
                         expService.addExp(rebuttal.getUser(), 100L, "반론 채택됨 (작성자)");
                         eventPublisher.publishEvent(new AdoptedEvent(rebuttal.getUser(), ContentType.REBUTTAL));
@@ -195,6 +219,7 @@ public class AdoptService {
         return ApiResponse.onSuccess("success", message);
     }
 
+    // [수정] API를 통한 수동 자동 채택 (버튼 클릭 등)
     public ApiResponse<String> adoptAuto(Long userId, Long caseId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
@@ -202,33 +227,31 @@ public class AdoptService {
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        // 유저의 진영 확인
+        // 유저 권한 확인
         List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
         ArgumentInitial userInitialArgument = allInitialArguments.stream()
                 .filter(arg -> arg.getUser().getId().equals(userId))
                 .findFirst()
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
 
-        // 공통 로직 호출 (해당 진영에 대해 자동 채택 수행)
-        performAutoAdoptForSide(aCase, userInitialArgument.getType());
+        // [로직 변경] 솔로 모드면 A, B 양쪽 다 수행 / 파티 모드면 내 진영만 수행
+        if (aCase.getMode() == CaseMode.SOLO) {
+            performAutoAdoptForSide(aCase, DebateSide.A);
+            performAutoAdoptForSide(aCase, DebateSide.B);
+        } else {
+            performAutoAdoptForSide(aCase, userInitialArgument.getType());
+        }
 
         return ApiResponse.onSuccess("success", "상위 5개 항목이 자동으로 채택되었습니다.");
     }
 
-    /**
-     * [추가된 메서드] 스케줄러를 위한 시스템 자동 채택
-     * userId 없이 Case 객체만으로 해당 사건의 양쪽 진영 모두에 대해 자동 채택을 수행합니다.
-     */
+    // 스케줄러용 시스템 자동 채택
+    // (참고: 스케줄러는 모든 ArgumentInitial(참여자)을 순회하므로 솔로 모드(참여자가 A, B 둘 다 있음)도 이미 정상 동작함)
     public void executeSystemAutoAdopt(Case aCase) {
-        // 1. 해당 사건의 초기 참여자 정보(진영 정보)를 모두 가져옴
         List<ArgumentInitial> participants = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
-
-        // 2. 각 참여자(진영) 별로 자동 채택 로직 수행
         for (ArgumentInitial participant : participants) {
             performAutoAdoptForSide(aCase, participant.getType());
         }
-
-        // 3. 사건 상태 변경
         aCase.setThird();
     }
 
@@ -238,14 +261,9 @@ public class AdoptService {
      */
     private void performAutoAdoptForSide(Case aCase, DebateSide type) {
         Long caseId = aCase.getId();
-
-        // 1. 해당 진영의 Defense 조회 (BLIND 제외)
         List<Defense> allDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsBlindFalse(caseId, type);
-
-        // 2. 해당 진영의 Rebuttal 조회 (BLIND 제외)
         List<Rebuttal> allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(caseId, type);
 
-        // 3. Stream 변환 및 통합 (getOpinionBest 로직 재사용)
         Stream<AdoptableItemDto> defenseStream = allDefenses.stream()
                 .map(d -> AdoptableItemDto.builder()
                         .itemType(ContentType.DEFENSE)
@@ -260,7 +278,6 @@ public class AdoptService {
                         .likeCount(r.getLikesCount())
                         .build());
 
-        // 4. 좋아요 순 정렬 후 상위 5개 추출
         List<AdoptableItemDto> top5Items = Stream.concat(defenseStream, rebuttalStream)
                 .sorted(Comparator.comparing(AdoptableItemDto::getLikeCount).reversed())
                 .limit(5)
@@ -268,11 +285,9 @@ public class AdoptService {
 
         if (top5Items.isEmpty()) return;
 
-        // 5. 채택 상태 변경 및 경험치 지급
         for (AdoptableItemDto item : top5Items) {
             if (item.getItemType() == ContentType.DEFENSE) {
                 defenseRepository.findById(item.getId()).ifPresent(defense -> {
-                    // 이미 채택된 경우 중복 처리 방지 (옵션)
                     if (!Boolean.TRUE.equals(defense.getIsAdopted())) {
                         defense.markAsAdopted();
                         expService.addExp(defense.getUser(), 100L, "변론 자동 채택");
@@ -296,9 +311,8 @@ public class AdoptService {
         Case acase = caseRepository.findById(caseId)
                 .orElseThrow(()-> new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        // [FIX for error 214] BLIND 미포함 메서드 사용
         List<Defense> adoptedDefenses = defenseRepository.findByaCase_IdAndIsAdoptedAndIsBlindFalse(caseId,Boolean.TRUE);
-        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId); // 이 메서드는 Repository에서 쿼리 수정됨
+        List<Rebuttal> adoptedRebuttals = rebuttalRepository.findAdoptedRebuttalsByCaseId(caseId);
 
         Stream<AdoptableItemDto> defenseStream = adoptedDefenses.stream()
                 .map(d -> AdoptableItemDto.builder()
@@ -329,13 +343,12 @@ public class AdoptService {
                             .build();
                 });
 
-        // [수정] 정렬 로직 추가
         List<AdoptableItemDto> adoptedItems = Stream.concat(defenseStream, rebuttalStream)
-                .sorted(Comparator.comparing(AdoptableItemDto::getLikeCount).reversed()) // 좋아요 순 정렬
+                .sorted(Comparator.comparing(AdoptableItemDto::getLikeCount).reversed())
                 .toList();
 
         AdoptResponseDto responseDto = AdoptResponseDto.builder()
-                .items(adoptedItems) // 'items' 필드에 통합 리스트를 담아 전달
+                .items(adoptedItems)
                 .build();
 
         return ApiResponse.onSuccess("채택된 반론 및 변론 조회 완료",responseDto);
