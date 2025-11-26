@@ -97,21 +97,23 @@ public class AuthService {
      */
     @Transactional(readOnly = true)
     public AccessTokenResponseDto refreshAccessToken(TokenRefreshRequestDto requestDto) {
-        String email = requestDto.getEmail();
         String refreshToken = requestDto.getRefreshToken();
 
-        // 1. Redis에서 email로 저장된 Refresh Token 조회
-        String storedToken = redisTemplate.opsForValue().get(email);
-
-        // 2. Redis에 토큰이 없거나, 요청된 토큰과 일치하지 않으면 예외
-        if (storedToken == null || !storedToken.equals(refreshToken)) {
-            // (GeneralErrorCode에 INVALID_TOKEN이 이미 있습니다)
-            throw new GeneralException(GeneralErrorCode.INVALID_TOKEN, "유효하지 않은 리프레시 토큰입니다.");
-        }
-
-        // 3. (선택 사항) JWT 라이브러리를 통해 토큰 유효성 재검증 (이미 만료되었는지 등)
+        // 1. 토큰 유효성 검사 및 이메일 추출 (순서 변경)
         if (!jwtUtil.validateToken(refreshToken)) {
             throw new GeneralException(GeneralErrorCode.INVALID_TOKEN, "만료되었거나 유효하지 않은 리프레시 토큰입니다.");
+        }
+
+        // JWT에서 이메일 추출
+        io.jsonwebtoken.Claims claims = jwtUtil.getClaimsFromToken(refreshToken);
+        String email = jwtUtil.getEmailFromToken(claims);
+
+        // 2. Redis에서 email로 저장된 Refresh Token 조회
+        String storedToken = redisTemplate.opsForValue().get(email);
+
+        // 3. 토큰 일치 여부 확인
+        if (storedToken == null || !storedToken.equals(refreshToken)) {
+            throw new GeneralException(GeneralErrorCode.INVALID_TOKEN, "유효하지 않은 리프레시 토큰입니다.");
         }
 
         // 4. 유저 정보로 새 Access Token 생성
