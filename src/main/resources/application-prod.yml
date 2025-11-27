@@ -60,3 +60,4 @@ openai:
 slack:
   webhook:
     url: ${SLACK_WEBHOOK_URL}
+    suggestion-url: ${SLACK_SUGGESTION_URL}
