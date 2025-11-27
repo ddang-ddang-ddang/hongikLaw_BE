@@ -18,6 +18,9 @@ public class JudgementDetailResponseDto {
     private String content;
     private Integer ratioA;
     private Integer ratioB;
+    private Boolean isAd;
+    private String adLink;
+    private String adImageUrl;
 
     // 이전에 만든 DTO 재활용
     private List<AdoptResponseDto.DefenseAdoptDto> adoptedDefenses;

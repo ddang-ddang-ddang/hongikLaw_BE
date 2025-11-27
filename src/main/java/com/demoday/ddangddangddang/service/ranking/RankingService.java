@@ -49,80 +49,99 @@ public class RankingService {
      * @param topN 가져올 랭킹 수 (예: 10)
      * @return 핫한 재판 ID 목록 (String)
      */
-    public List<String> getHotCaseIds(int topN) {
-        // ZREVRANGE 명령어: 점수가 높은 순(역순)으로 0위부터 (topN-1)위까지 조회
-        Set<String> hotCasesSet = redisTemplate.opsForZSet().reverseRange(HOT_CASES_KEY, 0, topN - 1);
-
-        if (hotCasesSet == null) {
-            return List.of(); // 비어있는 리스트 반환
-        }
-
-        // Set을 List로 변환하여 순서 보장 (Sorted Set이므로 이미 순서대로 반환됨)
-        return hotCasesSet.stream().collect(Collectors.toList());
-    }
-
     public ApiResponse<List<CaseSimpleDto>> getHotCases(int topN) {
+        List<CaseSimpleDto> resultList = new ArrayList<>();
+        Long adCaseId = null;
 
-        // 1. Redis에서 랭킹 순으로 ID 목록 조회
-        Set<String> hotCaseIdsSet = redisTemplate.opsForZSet().reverseRange(HOT_CASES_KEY, 0, topN - 1);
+        // 1. [광고 재판 조회] 가장 최신 광고 재판 1개를 조회하여 최상단에 추가
+        Optional<Case> adCaseOpt = caseRepository.findTopByIsAdTrueOrderByCreatedAtDesc();
 
-        if (hotCaseIdsSet == null || hotCaseIdsSet.isEmpty()) {
-            // [수정] 비어있는 리스트도 함께 반환
-            return ApiResponse.onSuccess("아직 핫한 사건이 없습니다.", Collections.emptyList());
+        if (adCaseOpt.isPresent()) {
+            Case adCase = adCaseOpt.get();
+            adCaseId = adCase.getId(); // 중복 방지를 위해 ID 저장
+
+            // 광고 재판의 Argument(입장문) 조회
+            List<ArgumentInitial> adArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(adCase);
+            List<String> adMainArguments = adArguments.stream()
+                    .map(ArgumentInitial::getMainArgument)
+                    .collect(Collectors.toList());
+
+            // 광고 재판 참여자 수 조회
+            int adParticipateCnt = caseRepository.countDistinctParticipants(adCase.getId());
+
+            // 결과 리스트에 광고 재판 추가 (isAd = true)
+            resultList.add(CaseSimpleDto.builder()
+                    .caseId(adCase.getId())
+                    .title(adCase.getTitle())
+                    .mainArguments(adMainArguments)
+                    .participateCnt(adParticipateCnt)
+                    .isAd(true)
+                    .build());
         }
 
-        // 2. ID 목록을 List<Long>으로 변환 (Redis 순서 유지)
-        List<Long> hotCaseIds = hotCaseIdsSet.stream()
-                .map(Long::parseLong)
-                .collect(Collectors.toList());
+        // 2. [Redis 랭킹 조회]
+        // 광고 재판이 랭킹에 포함되어 있을 경우를 대비해 (topN + 1)개 조회
+        Set<String> hotCaseIdsSet = redisTemplate.opsForZSet().reverseRange(HOT_CASES_KEY, 0, topN);
 
-        Collection<CaseStatus> statuses = new HashSet<>();
-        statuses.add(CaseStatus.THIRD);
-        statuses.add(CaseStatus.SECOND);
+        if (hotCaseIdsSet != null && !hotCaseIdsSet.isEmpty()) {
+            List<Long> hotCaseIds = new ArrayList<>();
 
-        // 3. DB에서 ID 목록에 해당하는 Case 정보 조회 (1번 쿼리)
-        List<Case> hotCasesFromDb = caseRepository.findAllByIdInAndStatusIn(hotCaseIds,statuses);
+            // Redis에서 가져온 ID들을 순회하며 광고 재판 ID와 중복되는지 확인
+            for (String idStr : hotCaseIdsSet) {
+                Long id = Long.parseLong(idStr);
 
-        // 4. Map으로 변환 (Key: caseId, Value: Case 객체)
-        Map<Long, Case> caseMap = hotCasesFromDb.stream()
-                .collect(Collectors.toMap(Case::getId, Function.identity()));
+                // 이미 추가된 광고 재판이면 리스트에 넣지 않고 건너뜀 (중복 제거 전략)
+                if (adCaseId != null && adCaseId.equals(id)) {
+                    continue;
+                }
 
-        // 5. Redis 랭킹 순서(hotCaseIds)대로 Case 리스트 정렬
-        List<Case> orderedCases = hotCaseIds.stream()
-                .map(caseMap::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+                hotCaseIds.add(id);
+                // 요청받은 topN 개수가 채워지면 중단
+                if (hotCaseIds.size() >= topN) break;
+            }
 
-        // 6. [N+1 방지] 정렬된 Case 리스트로 모든 Arguments를 *한 번에* 조회 (2번 쿼리)
-        List<ArgumentInitial> allArguments = argumentInitialRepository.findByaCaseInOrderByTypeAsc(orderedCases);
+            if (!hotCaseIds.isEmpty()) {
+                // 일반 재판은 2차(SECOND) 또는 3차(THIRD) 상태인 것만 조회
+                Collection<CaseStatus> statuses = Set.of(CaseStatus.THIRD, CaseStatus.SECOND);
 
-        // 7. Case ID별로 Argument 문자열 리스트를 그룹핑 (Map<CaseId, List<ArgumentString>>)
-        Map<Long, List<String>> argumentsMap = allArguments.stream()
-                .collect(Collectors.groupingBy(
-                        argument -> argument.getACase().getId(), // Key: Case ID
-                        Collectors.mapping(ArgumentInitial::getMainArgument, Collectors.toList()) // Value: List<String>
-                ));
+                // DB 조회 (IN 쿼리 사용)
+                List<Case> hotCasesFromDb = caseRepository.findAllByIdInAndStatusIn(hotCaseIds, statuses);
 
-        // 8. 랭킹 순서(orderedCases)대로 DTO 빌드
-        List<CaseSimpleDto> orderedHotCases = orderedCases.stream()
-                .limit(10)
-                .map(aCase -> {
-                    // Map에서 해당 Case의 arguments 리스트를 찾음 (없으면 빈 리스트)
+                // 조회를 위해 Map으로 변환
+                Map<Long, Case> caseMap = hotCasesFromDb.stream()
+                        .collect(Collectors.toMap(Case::getId, Function.identity()));
+
+                // Redis 랭킹 순서대로 Case 객체 정렬 (DB 조회 결과는 순서 보장 X)
+                List<Case> orderedCases = hotCaseIds.stream()
+                        .map(caseMap::get)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+
+                // [N+1 방지] 모든 Case의 Argument를 한 번에 조회
+                List<ArgumentInitial> allArguments = argumentInitialRepository.findByaCaseInOrderByTypeAsc(orderedCases);
+                Map<Long, List<String>> argumentsMap = allArguments.stream()
+                        .collect(Collectors.groupingBy(
+                                arg -> arg.getACase().getId(),
+                                Collectors.mapping(ArgumentInitial::getMainArgument, Collectors.toList())
+                        ));
+
+                // 일반 랭킹 재판들을 DTO로 변환하여 결과 리스트에 추가
+                for (Case aCase : orderedCases) {
                     List<String> mainArguments = argumentsMap.getOrDefault(aCase.getId(), Collections.emptyList());
-
                     int distinctCount = caseRepository.countDistinctParticipants(aCase.getId());
 
-                    return CaseSimpleDto.builder()
+                    resultList.add(CaseSimpleDto.builder()
                             .caseId(aCase.getId())
                             .title(aCase.getTitle())
                             .mainArguments(mainArguments)
                             .participateCnt(distinctCount)
-                            .build();
-                })
-                .collect(Collectors.toList());
+                            .isAd(false) // 일반 재판 표시
+                            .build());
+                }
+            }
+        }
 
-        // 6. 공통 응답 형식으로 래핑하여 반환
-        return ApiResponse.onSuccess("현재 핫한 사건 리스트 조회 성공",orderedHotCases);
+        return ApiResponse.onSuccess("현재 핫한 사건 리스트 조회 성공", resultList);
     }
 
     // (참고) 랭킹과 점수를 함께 가져오려면?

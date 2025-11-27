@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CaseRepository extends JpaRepository<Case,Long> {
@@ -43,4 +44,6 @@ public interface CaseRepository extends JpaRepository<Case,Long> {
     int countDistinctParticipants(@Param("caseId") Long caseId);
 
     List<Case> findAllByIdInAndStatusIn(Collection<Long> ids, Collection<CaseStatus> statuses);
+
+    Optional<Case> findTopByIsAdTrueOrderByCreatedAtDesc();
  }
