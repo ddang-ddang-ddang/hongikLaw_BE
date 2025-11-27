@@ -28,6 +28,9 @@ public class CaseDetail2ndResponseDto {
 
     private ArgumentDetailDto argumentA;
     private ArgumentDetailDto argumentB;
+    private Boolean isAd;
+    private String adLink;      // "구매하러 가기" 버튼 링크
+    private String adImageUrl;  // 커스텀 배경/배너 이미지
 
     @Getter
     @Builder
@@ -154,6 +157,9 @@ public class CaseDetail2ndResponseDto {
                 .currentJudgment(finalJudgment != null ? new JudgmentResponseDto(finalJudgment) : null)
                 .argumentA(argA != null ? ArgumentDetailDto.fromEntity(argA) : null)
                 .argumentB(argB != null ? ArgumentDetailDto.fromEntity(argB) : null)
+                .isAd(aCase.getIsAd())
+                .adLink(aCase.getAdLink())
+                .adImageUrl(aCase.getAdImageUrl())
                 .build();
     }
 }

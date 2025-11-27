@@ -19,4 +19,5 @@ public class CaseSimpleDto {
     private String title;
     private List<String> mainArguments;
     private Integer participateCnt;
+    private Boolean isAd;
 }

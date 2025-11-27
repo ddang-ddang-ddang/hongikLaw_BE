@@ -42,6 +42,18 @@ public class Case extends BaseEntity {
     @Column(name = "appeal_deadline")
     private LocalDateTime appealDeadline;
 
+    // [추가] 광고 여부 플래그
+    @Column(name = "is_ad")
+    private Boolean isAd = false;
+
+    // [추가] 확장성: 클릭 시 이동할 외부 링크 (쇼핑몰, OTT 등)
+    @Column(name = "ad_link")
+    private String adLink;
+
+    // [추가] 이미지 매칭: 광고 전용 커스텀 이미지 URL (배너 또는 배경)
+    @Column(name = "ad_image_url")
+    private String adImageUrl;
+
     @Builder
     public Case(CaseMode mode, String title, CaseStatus status) {
         this.mode = mode;
@@ -74,5 +86,11 @@ public class Case extends BaseEntity {
         if (this.appealDeadline == null) {
             this.appealDeadline = LocalDateTime.now().plusHours(24);
         }
+    }
+
+    public void markAsAd(String adLink, String adImageUrl) {
+        this.isAd = true;
+        this.adLink = adLink;
+        this.adImageUrl = adImageUrl;
     }
 }
