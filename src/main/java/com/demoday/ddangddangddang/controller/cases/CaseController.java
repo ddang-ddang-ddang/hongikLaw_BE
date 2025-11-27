@@ -106,4 +106,12 @@ public class CaseController {
         caseService.updateCaseStatus(caseId, requestDto, userDetails.getUser());
         return ResponseEntity.ok(ApiResponse.onSuccess("사건 상태가 성공적으로 변경되었습니다."));
     }
+
+    @Operation(summary = "사건 삭제", description = "특정 사건 및 관련 데이터를 모두 삭제합니다. (누구나 가능)")
+    @DeleteMapping("/delete/{caseId}") // [변경] 경로 수정
+    public ResponseEntity<ApiResponse<Void>> deleteCase(@PathVariable Long caseId) {
+        // 유저 정보 없이 ID만 전달
+        caseService.deleteCase(caseId);
+        return ResponseEntity.ok(ApiResponse.onSuccess("사건이 성공적으로 삭제되었습니다."));
+    }
 }

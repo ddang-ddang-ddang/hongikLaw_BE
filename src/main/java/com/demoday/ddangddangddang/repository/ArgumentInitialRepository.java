@@ -11,11 +11,10 @@ import java.util.List;
 @Repository
 public interface ArgumentInitialRepository extends JpaRepository<ArgumentInitial,Long> {
     List<ArgumentInitial> findByUser(User user);
-
-    // [수정] findByaCase -> findByaCaseOrderByTypeAsc (A측이 먼저 오도록 정렬)
+    // findByaCase -> findByaCaseOrderByTypeAsc (A측이 먼저 오도록 정렬)
     List<ArgumentInitial> findByaCaseOrderByTypeAsc(Case aCase);
-
     List<ArgumentInitial> findByaCaseInOrderByTypeAsc(List<Case> cases);
-
     List<ArgumentInitial> findByaCaseAndUser(Case aCase, User user);
+    // 사건의 모든 1차 입장문 삭제
+    void deleteAllByaCase(Case aCase);
 }

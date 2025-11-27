@@ -75,6 +75,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,"/api/final/adopt/{caseId}//**").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/final/judge/{caseId}/judgeStatus").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/final/judge/{caseId}/history").permitAll()
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/cases/delete/{caseId}").permitAll()
                 .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
         );
 
@@ -100,7 +101,6 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "https://ddang-ddang-ddang-fe-8npo.vercel.app/",
                 "https://api.ddangx3.site",
-                "https://web.ddangx3.site",
                 "https://www.ddangx3.site"
         ));
         config.setAllowedMethods(java.util.List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));

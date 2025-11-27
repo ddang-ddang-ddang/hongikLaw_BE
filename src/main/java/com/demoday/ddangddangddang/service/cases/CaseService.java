@@ -13,10 +13,7 @@ import com.demoday.ddangddangddang.dto.notice.NotificationResponseDto;
 import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
 import com.demoday.ddangddangddang.global.exception.GeneralException;
 import com.demoday.ddangddangddang.global.sse.SseEmitters;
-import com.demoday.ddangddangddang.repository.ArgumentInitialRepository;
-import com.demoday.ddangddangddang.repository.CaseRepository;
-import com.demoday.ddangddangddang.repository.JudgmentRepository;
-import com.demoday.ddangddangddang.repository.CaseParticipationRepository; // [추가]
+import com.demoday.ddangddangddang.repository.*;
 import com.demoday.ddangddangddang.service.ChatGptService;
 import com.demoday.ddangddangddang.service.ExpService;
 import com.demoday.ddangddangddang.service.ranking.RankingService;
@@ -45,6 +42,11 @@ public class CaseService {
     private final SseEmitters sseEmitters;
     private final ApplicationEventPublisher eventPublisher;
     private final ExpService expService;
+    private final DefenseRepository defenseRepository;
+    private final RebuttalRepository rebuttalRepository;
+    private final VoteRepository voteRepository;
+    private final LikeRepository likeRepository;
+    private final ReportRepository reportRepository;
 
     @Transactional
     public CaseResponseDto createCase(CaseRequestDto requestDto, User user) {
@@ -375,5 +377,52 @@ public class CaseService {
                         .mainArguments(argumentsMap.getOrDefault(aCase.getId(), Collections.emptyList()))
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 사건 삭제 (누구나 가능)
+     * 연관된 모든 데이터(변론, 반론, 좋아요, 신고, 투표, 판결 등)를 함께 삭제합니다.
+     */
+    @Transactional
+    public void deleteCase(Long caseId) {
+        Case aCase = findCaseById(caseId);
+
+        // [참고] 유저 정보가 필요하다면 1차 입장문에서 추출 (로그용)
+        List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+        if (!arguments.isEmpty()) {
+            Long ownerId = arguments.get(0).getUser().getId();
+            log.info("Deleting Case ID: {}, Created by User ID: {}", caseId, ownerId);
+        }
+
+        // 1. 반론(Rebuttal) 및 관련 데이터(좋아요, 신고) 삭제
+        List<Rebuttal> rebuttals = rebuttalRepository.findAllByDefense_aCase_Id(caseId);
+        for (Rebuttal r : rebuttals) {
+            likeRepository.deleteByContentIdAndContentType(r.getId(), ContentType.REBUTTAL);
+            reportRepository.deleteByContentIdAndContentType(r.getId(), ContentType.REBUTTAL);
+        }
+        rebuttalRepository.deleteAll(rebuttals);
+
+        // 2. 변론(Defense) 및 관련 데이터(좋아요, 신고) 삭제
+        List<Defense> defenses = defenseRepository.findAllByaCase_Id(caseId);
+        for (Defense d : defenses) {
+            likeRepository.deleteByContentIdAndContentType(d.getId(), ContentType.DEFENSE);
+            reportRepository.deleteByContentIdAndContentType(d.getId(), ContentType.DEFENSE);
+        }
+        defenseRepository.deleteAll(defenses);
+
+        // 3. 투표(Vote) 삭제
+        voteRepository.deleteAllByaCase(aCase);
+
+        // 4. 판결(Judgment) 삭제
+        judgmentRepository.deleteAllByaCase(aCase);
+
+        // 5. 1차 입장문(ArgumentInitial) 삭제
+        argumentInitialRepository.deleteAllByaCase(aCase);
+
+        // 6. 사건(Case) 삭제
+        // (CaseParticipation은 Case 엔티티의 CascadeType.ALL 설정에 의해 자동 삭제됨)
+        caseRepository.delete(aCase);
+
+        log.info("Case ID {} 및 관련 데이터 삭제 완료", caseId);
     }
 }
