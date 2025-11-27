@@ -67,6 +67,12 @@ public class CaseService {
                 .title(requestDto.getTitle())
                 .status(CaseStatus.FIRST)
                 .build();
+
+        // [추가] 광고 정보가 요청에 포함되어 있다면 설정
+        if (requestDto.getAdLink() != null && requestDto.getAdImageUrl() != null) {
+            newCase.markAsAd(requestDto.getAdLink(), requestDto.getAdImageUrl());
+        }
+
         caseRepository.save(newCase);
 
         //A입장문 저장

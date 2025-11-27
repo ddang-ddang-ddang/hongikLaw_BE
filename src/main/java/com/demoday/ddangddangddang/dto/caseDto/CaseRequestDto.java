@@ -32,4 +32,7 @@ public class CaseRequestDto {
     @Nullable
     @NotBlank(message = "B측 근거를 입력해주세요.")
     private String argumentBReasoning; // B측 근거
+
+    private String adLink;
+    private String adImageUrl;
 }
