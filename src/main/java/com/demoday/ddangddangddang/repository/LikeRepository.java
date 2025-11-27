@@ -13,9 +13,10 @@ import java.util.Optional;
 @Repository
 public interface LikeRepository extends JpaRepository<Like,Long> {
     Optional<Like> findByUserAndContentIdAndContentType(User user, Long contentId, ContentType contentType);
-
     List<Like> findAllByUserAndContentType(User user, ContentType contentType);
-
     void deleteByUserAndContentIdAndContentType(User user, Long contentId, ContentType contentType);
     boolean existsByUserAndContentIdAndContentType(User user, Long contentId, ContentType contentType);
+
+    // [추가] 특정 콘텐츠의 모든 좋아요 삭제 (삭제 시 사용)
+    void deleteByContentIdAndContentType(Long contentId, ContentType contentType);
 }
