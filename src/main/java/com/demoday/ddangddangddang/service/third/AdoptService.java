@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 @Service
@@ -36,27 +37,36 @@ public class AdoptService {
     private final ApplicationEventPublisher eventPublisher;
     private final ExpService expService;
 
-    //좋아요 많은 순으로 노출 (유저가 채택화면에서 보게 될 선택지)
+    // 좋아요 많은 순으로 노출 (유저가 채택화면에서 보게 될 선택지)
     public ApiResponse<AdoptResponseDto> getOpinionBest(Long userId, Long caseId) {
 
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(()->new GeneralException(GeneralErrorCode.CASE_NOT_FOUND));
 
-        // 유저가 initial한 사건인지 확인 (권한 체크)
-        List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
-        ArgumentInitial userInitialArgument = allInitialArguments.stream()
-                .filter(arg -> arg.getUser().getId().equals(userId))
-                .findFirst()
-                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN_USER_NOT_PART_OF_DEBATE));
+        // [수정] 비로그인 유저 또는 참여자가 아닌 경우를 위한 로직 변경
+        DebateSide userSide = null;
+
+        if (userId != null) {
+            // 유저가 로그인 상태라면, 해당 사건의 참여자인지 확인하고 진영(A/B)을 파악
+            List<ArgumentInitial> allInitialArguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
+            Optional<ArgumentInitial> myArg = allInitialArguments.stream()
+                    .filter(arg -> arg.getUser().getId().equals(userId))
+                    .findFirst();
+
+            if (myArg.isPresent()) {
+                userSide = myArg.get().getType();
+            }
+        }
 
         List<Defense> allDefenses;
         List<Rebuttal> allRebuttals;
 
-        // 솔로 모드면 전체 조회, 파티 모드면 내 진영만 조회
-        if (aCase.getMode() == CaseMode.SOLO) {
-            // 솔로 모드: 진영 상관없이 블라인드 안 된 모든 목록 조회
-            // (DefenseRepository에 findAllByaCase_IdAndIsBlindFalseOrderByLikesCountDesc 같은 메서드가 없다면 아래처럼 스트림 필터링하거나 레포지토리 메서드 추가 필요)
-            // 여기서는 기존 메서드 활용 + 스트림 필터링 예시
+        // [조건 변경]
+        // 1. 솔로 모드인 경우
+        // 2. 비로그인 유저인 경우 (userId == null)
+        // 3. 로그인했으나 참여자가 아닌 경우 (userSide == null)
+        // -> 위 경우에는 진영 구분 없이 블라인드 안 된 모든 목록 조회 (Observing Mode)
+        if (aCase.getMode() == CaseMode.SOLO || userSide == null) {
             allDefenses = defenseRepository.findAllByaCase_Id(caseId).stream()
                     .filter(d -> !d.getIsBlind())
                     .toList();
@@ -65,10 +75,9 @@ public class AdoptService {
                     .filter(r -> !r.getIsBlind())
                     .toList();
         } else {
-            // 파티(VS) 모드: 내 진영만 조회 (기존 로직)
-            DebateSide type = userInitialArgument.getType();
-            allDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsBlindFalse(caseId, type);
-            allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(caseId, type);
+            // 파티(VS) 모드이면서 실제 참여자인 경우: 내 진영만 조회
+            allDefenses = defenseRepository.findAllByaCase_IdAndTypeAndIsBlindFalse(caseId, userSide);
+            allRebuttals = rebuttalRepository.findAllByDefense_aCase_IdAndTypeAndIsBlindFalse(caseId, userSide);
         }
 
         Stream<AdoptableItemDto> defenseStream = allDefenses.stream()
