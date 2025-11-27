@@ -1,6 +1,7 @@
 package com.demoday.ddangddangddang.service;
 
 import com.demoday.ddangddangddang.domain.Report;
+import com.demoday.ddangddangddang.domain.Suggestion;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -101,6 +102,56 @@ public class SlackNotificationService {
                 report.getCustomReason() != null && !report.getCustomReason().isEmpty() ? report.getCustomReason() : "없음",
                 displayContent, // 실제 콘텐츠 내용
                 report.getCreatedAt() != null ? report.getCreatedAt().format(FORMATTER) : LocalDateTime.now().format(FORMATTER)
+        );
+    }
+
+    // 건의사항 알림 전송 메서드
+    public void sendSuggestionNotification(Suggestion suggestion) {
+        if (slackWebhookUrl == null || slackWebhookUrl.isEmpty()) {
+            log.warn("Slack Webhook URL이 설정되지 않아 건의 알림을 건너뜁니다.");
+            return;
+        }
+
+        String messageText = buildSuggestionMessage(suggestion);
+
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(Map.of("text", messageText));
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(slackWebhookUrl)) // 기존 URL 재사용 (원한다면 별도 채널 URL 사용 가능)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .build();
+
+            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(response -> {
+                        if (response.statusCode() != 200) {
+                            log.error("Slack 건의 알림 전송 실패. 응답 코드: {}", response.statusCode());
+                        } else {
+                            log.info("Slack 건의 알림 전송 완료: ID {}", suggestion.getId());
+                        }
+                    });
+        } catch (IOException e) {
+            log.error("Slack 메시지 생성 중 오류: {}", e.getMessage());
+        }
+    }
+
+    // 건의사항 메시지 포맷 생성
+    private String buildSuggestionMessage(Suggestion suggestion) {
+        return String.format(
+                "💡 *새로운 건의사항 도착* 💡\n" +
+                        "-----------------------------------\n" +
+                        "• 건의 ID: `%d`\n" +
+                        "• 작성자: `%s` (ID: %d)\n" +
+                        "-----------------------------------\n" +
+                        "• 내용: \n> %s\n" +
+                        "-----------------------------------\n" +
+                        "• 접수 시각: %s\n",
+                suggestion.getId(),
+                suggestion.getUser().getNickname(),
+                suggestion.getUser().getId(),
+                suggestion.getContent(),
+                suggestion.getCreatedAt() != null ? suggestion.getCreatedAt().format(FORMATTER) : LocalDateTime.now().format(FORMATTER)
         );
     }
 }
