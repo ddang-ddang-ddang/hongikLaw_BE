@@ -1,6 +1,13 @@
 package com.demoday.ddangddangddang.global.sse;
 
+import com.demoday.ddangddangddang.domain.Notification;
+import com.demoday.ddangddangddang.domain.User;
 import com.demoday.ddangddangddang.dto.notice.NotificationResponseDto;
+import com.demoday.ddangddangddang.global.code.GeneralErrorCode;
+import com.demoday.ddangddangddang.global.exception.GeneralException;
+import com.demoday.ddangddangddang.repository.NotificationRepository;
+import com.demoday.ddangddangddang.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -12,12 +19,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class SseEmitters {
 
     //사건을 파라미터로 해서 연결
     private final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
     //유저 아이디를 파라미터로 해서 연결
     private final Map<Long, SseEmitter> userEmitters = new ConcurrentHashMap<>();
+    private final NotificationRepository notificationRepository; // [추가]
+    private final UserRepository userRepository; // [추가] 유저 조회를 위해 필요
 
     public SseEmitter add(Long caseId) {
         SseEmitter emitter = new SseEmitter(60 * 1000L * 10); // 10분 타임아웃
@@ -112,21 +122,35 @@ public class SseEmitters {
     public void sendNotification(Long userId, String eventName, NotificationResponseDto dto) {
         log.info("알림 전송 시도 - Target UserId: {}, Event: {}", userId, eventName); // [1] 진입 로그
 
-        SseEmitter emitter = this.userEmitters.get(userId);
+        // 1. DB에 알림 저장 (접속 여부와 상관없이 무조건 저장)
+        User receiver = userRepository.findById(userId)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.USER_NOT_FOUND));
 
+        Notification notification = Notification.builder()
+                .receiver(receiver)
+                .message(dto.getMessage())
+                .caseId(dto.getCaseId())
+                .defenseId(dto.getDefenseId())
+                .rebuttalId(dto.getRebuttalId())
+                .judgementId(dto.getJudgementId())
+                .iconUrl(dto.getIconUrl())
+                .isRead(false)
+                .build();
+
+        notificationRepository.save(notification);
+
+        // 2. 실시간 전송 시도 (접속 중일 때만 감)
+        SseEmitter emitter = this.userEmitters.get(userId);
         if (emitter != null) {
             try {
                 emitter.send(SseEmitter.event()
                         .name(eventName)
                         .data(dto));
-                log.info("알림 전송 성공 - UserId: {}", userId); // [2] 성공 로그
+                log.info("실시간 알림 전송 성공 - UserId: {}", userId);
             } catch (IOException e) {
                 this.userEmitters.remove(userId);
-                log.error("알림 전송 실패 (IO Exception) - UserId: {}", userId, e);
+                log.error("실시간 전송 실패 (저장은 완료됨) - UserId: {}", userId);
             }
-        } else {
-            log.warn("알림 전송 실패 - 접속중인 유저를 찾을 수 없음 (Emitter Null) - UserId: {}", userId);
-            log.info("현재 접속중인 유저 목록(Keys): {}", userEmitters.keySet()); // 현재 맵에 누가 있는지 확인
         }
     }
 
