@@ -19,12 +19,16 @@ import org.springframework.web.bind.annotation.*;
 public class AdoptController {
     private final AdoptService adoptService;
 
-    @SecurityRequirement(name = "JWT TOKEN")
+    // [수정] 비로그인 유저도 접근 가능하도록 null 체크 추가
     @Operation(summary = "좋아요 많은 순으로 조회", description = "현재 변론/반론을 좋아요순으로 조회합니다")
     @GetMapping("/{caseId}/best")
-    public ApiResponse<AdoptResponseDto> getOpinionBest(@AuthenticationPrincipal UserDetailsImpl user,@PathVariable Long caseId) {
-        Long userId = user.getUser().getId();
-        return adoptService.getOpinionBest(userId,caseId);
+    public ApiResponse<AdoptResponseDto> getOpinionBest(
+            @AuthenticationPrincipal UserDetailsImpl user,
+            @PathVariable Long caseId
+    ) {
+        // user가 null이면(비로그인) userId도 null로 전달
+        Long userId = (user != null) ? user.getUser().getId() : null;
+        return adoptService.getOpinionBest(userId, caseId);
     }
 
     @SecurityRequirement(name = "JWT TOKEN")
