@@ -46,11 +46,11 @@ public class Case extends BaseEntity {
     @Column(name = "is_ad")
     private Boolean isAd = false;
 
-    // [추가] 확장성: 클릭 시 이동할 외부 링크 (쇼핑몰, OTT 등)
+    // 확장성: 클릭 시 이동할 외부 링크 (쇼핑몰, OTT 등)
     @Column(name = "ad_link")
     private String adLink;
 
-    // [추가] 이미지 매칭: 광고 전용 커스텀 이미지 URL (배너 또는 배경)
+    // 이미지 매칭: 광고 전용 커스텀 이미지 URL (배너 또는 배경)
     @Column(name = "ad_image_url")
     private String adImageUrl;
 
@@ -63,12 +63,12 @@ public class Case extends BaseEntity {
 
     public void updateStatus(CaseStatus newStatus) {
         this.status = newStatus;
-        if (CaseStatus.DONE.equals(newStatus)) {
+        // DONE 또는 QUIT 상태로 변경 시 종료 시간 기록
+        if (CaseStatus.DONE.equals(newStatus) || CaseStatus.QUIT.equals(newStatus)) {
             this.closedAt = LocalDateTime.now();
         }
     }
 
-    // --- [ startAppeal 메서드 수정: deadline null 체크 추가 ] ---
     public void startAppeal(LocalDateTime deadline) {
         if (deadline == null) {
             throw new IllegalArgumentException("2차 재판 마감 기한(deadline)은 필수입니다.");

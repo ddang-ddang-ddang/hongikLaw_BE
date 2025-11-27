@@ -70,7 +70,7 @@ public class CaseService {
                 .status(CaseStatus.FIRST)
                 .build();
 
-        // [추가] 광고 정보가 요청에 포함되어 있다면 설정
+        // 광고 정보가 요청에 포함되어 있다면 설정
         if (requestDto.getAdLink() != null && requestDto.getAdImageUrl() != null) {
             newCase.markAsAd(requestDto.getAdLink(), requestDto.getAdImageUrl());
         }
@@ -100,7 +100,7 @@ public class CaseService {
                 .aCase(newCase)
                 .user(user)
                 .result(CaseResult.ONGOING)
-                .build()); // [수정] Result 추가
+                .build()); // Result 추가
 
         List<ArgumentInitial> arguments = List.of(argumentA, argumentB);
         AiJudgmentDto aiResult = chatGptService.getAiJudgment(newCase, arguments);
@@ -152,7 +152,7 @@ public class CaseService {
         // VS 모드 사건 생성 시 +100 exp
         expService.addExp(user, 100L, "VS 모드 사건 생성");
 
-        //이벤트 리스너 호출(사건 생성)
+        // 이벤트 리스너 호출(사건 생성)
         eventPublisher.publishEvent(new CaseCreatedEvent(user));
 
         return new CaseResponseDto(newCase.getId());
@@ -296,7 +296,14 @@ public class CaseService {
         }
 
         if (requestDto.getStatus() == CaseStatus.DONE) {
-            foundCase.updateStatus(CaseStatus.DONE);
+            // [수정] 모드에 따라 종료 상태 분기 처리
+            if (foundCase.getMode() == CaseMode.SOLO) {
+                // SOLO 모드는 비공개 종료(QUIT)
+                foundCase.updateStatus(CaseStatus.QUIT);
+            } else {
+                // PARTY 모드는 공개 종료(DONE)
+                foundCase.updateStatus(CaseStatus.DONE);
+            }
         } else {
             throw new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "잘못된 상태 값입니다. DONE만 가능합니다.");
         }
@@ -338,7 +345,7 @@ public class CaseService {
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.INVALID_PARAMETER, "사건을 찾을 수 없습니다."));
     }
 
-    // [추가] 사건 검색 메서드
+    // 사건 검색 메서드
     @Transactional(readOnly = true)
     public List<CaseOnResponseDto> searchCases(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
@@ -387,7 +394,7 @@ public class CaseService {
     public void deleteCase(Long caseId) {
         Case aCase = findCaseById(caseId);
 
-        // [참고] 유저 정보가 필요하다면 1차 입장문에서 추출 (로그용)
+        // 유저 정보가 필요하다면 1차 입장문에서 추출 (로그용)
         List<ArgumentInitial> arguments = argumentInitialRepository.findByaCaseOrderByTypeAsc(aCase);
         if (!arguments.isEmpty()) {
             Long ownerId = arguments.get(0).getUser().getId();
