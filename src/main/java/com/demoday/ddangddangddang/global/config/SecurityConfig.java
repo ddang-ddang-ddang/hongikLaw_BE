@@ -77,7 +77,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,"/api/final/adopt/{caseId}/**").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/final/judge/{caseId}/judgeStatus").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/final/judge/{caseId}/history").permitAll()
-                .requsetMatchers(HttpMethod.GET, "/api/v1/cases/{caseId}/judgment").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/cases/{caseId}/judgment").permitAll()
                 .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
         );
 
