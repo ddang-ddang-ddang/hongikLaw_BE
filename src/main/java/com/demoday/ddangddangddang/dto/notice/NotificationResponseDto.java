@@ -8,6 +8,7 @@ import lombok.Getter;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class NotificationResponseDto {
+    private Long id;
     private Long caseId;
     private Long defenseId;
     private Long parentId;
