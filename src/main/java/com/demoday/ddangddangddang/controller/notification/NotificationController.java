@@ -7,6 +7,7 @@ import com.demoday.ddangddangddang.global.apiresponse.ApiResponse;
 import com.demoday.ddangddangddang.global.security.UserDetailsImpl;
 import com.demoday.ddangddangddang.global.sse.SseEmitters;
 import com.demoday.ddangddangddang.repository.NotificationRepository;
+import com.demoday.ddangddangddang.service.NotificatoinService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,9 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
@@ -31,6 +30,8 @@ public class NotificationController {
     private final NotificationRepository notificationRepository;
 
     private final SseEmitters sseEmitters;
+    private final NotificatoinService notificatoinService;
+
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @SecurityRequirement(name = "JWT TOKEN")
     @Operation(summary = "알림 구독", description = "알림을 전송합니다")
@@ -45,6 +46,7 @@ public class NotificationController {
 
     @GetMapping
     @Operation(summary = "알림 목록 조회", description = "읽지 않은 알림 목록을 조회합니다.")
+    @SecurityRequirement(name = "JWT TOKEN")
     public ApiResponse<List<NotificationResponseDto>> getNotifications(@AuthenticationPrincipal UserDetailsImpl userDetails) {
         User user = userDetails.getUser();
 
@@ -55,6 +57,7 @@ public class NotificationController {
         List<NotificationResponseDto> responseDtos = notifications.stream()
                 .map(n -> NotificationResponseDto.builder()
                         .message(n.getMessage())
+                        .id(n.getId())
                         .caseId(n.getCaseId())
                         .defenseId(n.getDefenseId())
                         .rebuttalId(n.getRebuttalId())
@@ -64,5 +67,20 @@ public class NotificationController {
                 .collect(Collectors.toList());
 
         return ApiResponse.onSuccess("알림 목록 조회 성공", responseDtos);
+    }
+
+    @PatchMapping("/{notiId}")
+    @Operation(summary = "알림 읽음", description = "읽음 처리")
+    @SecurityRequirement(name = "JWT TOKEN")
+    public ApiResponse<Void> readNotification(@AuthenticationPrincipal UserDetailsImpl userDetails, @PathVariable Long notiId) {
+        Long userId = userDetails.getUser().getId();
+
+        return notificatoinService.readNotification(userId,notiId);
+    }
+
+    @DeleteMapping("/{notiId}")
+    @Operation(summary = "알림 삭제")
+    public ApiResponse<Void> deleteNotification(@PathVariable Long notiId) {
+        return notificatoinService.deleteNotification(notiId);
     }
 }
