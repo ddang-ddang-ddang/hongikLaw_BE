@@ -16,4 +16,5 @@ public class NotificationResponseDto {
     private String message;
     private String iconUrl;
     private Long judgementId;
+    private Boolean isRead;
 }
