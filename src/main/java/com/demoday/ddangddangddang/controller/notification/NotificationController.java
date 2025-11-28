@@ -63,6 +63,7 @@ public class NotificationController {
                         .rebuttalId(n.getRebuttalId())
                         .judgementId(n.getJudgementId())
                         .iconUrl(n.getIconUrl())
+                        .isRead(n.getIsRead())
                         .build())
                 .collect(Collectors.toList());
 
