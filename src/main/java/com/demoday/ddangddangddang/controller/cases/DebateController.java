@@ -141,10 +141,9 @@ public class DebateController {
     @Operation(summary = "2차 재판 투표 결과 조회", description = "현재 사건의 A/B측 투표 현황 및 퍼센트를 조회합니다.")
     @GetMapping("/cases/{caseId}/vote/result")
     public ResponseEntity<ApiResponse<VoteResultResponseDto>> getVoteResult(
-            @PathVariable Long caseId,
-            @AuthenticationPrincipal UserDetailsImpl userDetails
+            @PathVariable Long caseId
     ) {
-        VoteResultResponseDto resultDto = debateService.getVoteResult(caseId, userDetails.getUser());
+        VoteResultResponseDto resultDto = debateService.getVoteResult(caseId);
         return ResponseEntity.ok(ApiResponse.onSuccess("투표 결과 조회에 성공하였습니다.", resultDto));
     }
 }
