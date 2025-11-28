@@ -347,7 +347,7 @@ public class DebateService {
      * 투표 결과 조회
      */
     @Transactional(readOnly = true)
-    public VoteResultResponseDto getVoteResult(Long caseId, User user) {
+    public VoteResultResponseDto getVoteResult(Long caseId) {
         long aCount = voteRepository.countByaCase_IdAndType(caseId, DebateSide.A);
         long bCount = voteRepository.countByaCase_IdAndType(caseId, DebateSide.B);
         long total = aCount + bCount;
