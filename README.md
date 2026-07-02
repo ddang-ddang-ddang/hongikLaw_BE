@@ -107,18 +107,32 @@ Server : https://api.ddangx3.site/
 
 ```mermaid
 graph TD
-    User[Client] -->|HTTP/HTTPS| API_Gateway[Spring Boot Server]
-    
-    subgraph Backend
-    API_Gateway -->|Data Access| DB[(MySQL)]
-    API_Gateway -->|Cache & Ranking| Redis[(Redis)]
-    API_Gateway -->|Image Upload| S3[AWS S3]
+    User[Client / Browser] -->|HTTP :80 / HTTPS :443| Nginx[Nginx Reverse Proxy<br/>EC2 Front Server<br/>Port 80 / 443]
+
+    Nginx -->|Proxy Pass<br/>localhost:8080| Spring[Spring Boot Application<br/>Port 8080]
+
+    subgraph AWS_EC2["AWS EC2"]
+        Nginx
+        Spring
     end
-    
-    subgraph External Services
-    API_Gateway -->|Judgment Request| AI[OpenAI GPT-4o]
-    API_Gateway -->|Email Auth| SMTP[Gmail SMTP]
-    API_Gateway -->|Monitoring| Slack[Slack Webhook]
+
+    subgraph Backend["Backend Resources"]
+        Spring -->|JPA / JDBC<br/>Port 3306| MySQL[(MySQL DB)]
+        Spring -->|Cache & Ranking<br/>Port 6379| Redis[(Redis)]
+        Spring -->|Image Upload<br/>HTTPS API| S3[AWS S3]
+    end
+
+    subgraph External_Services["External Services"]
+        Spring -->|Judgment Request<br/>HTTPS API| OpenAI[OpenAI GPT-4o]
+        Spring -->|Email Auth / Mail Send<br/>SMTP 587 or 465| Gmail[Gmail SMTP]
+        Spring -->|Error / Deploy Monitoring<br/>Webhook HTTPS| Slack[Slack Webhook]
+    end
+
+    subgraph CICD["CI/CD Pipeline"]
+        GitHub[GitHub Repository] -->|Push / PR Trigger| Actions[GitHub Actions]
+        Actions -->|Build & Test<br/>Gradle / JDK| Build[Build Artifact<br/>.jar]
+        Build -->|SSH / SCP Deploy| Spring
+        Actions -->|Deploy Notification| Slack
     end
 ```
 
