@@ -33,7 +33,7 @@ Server : https://api.ddangx3.site/
 | **AI / LLM** | OpenAI API (GPT-4o) |
 | **Mail / Noti** | JavaMailSender, Slack Webhook, SSE |
 | **Build / Deploy** | Gradle, GitHub Actions |
-| **Etc** | Lombok, Swagger (SpringDoc), WebSocket(SSE) |
+| **Etc** | Lombok, Swagger (SpringDoc) |
 
 
 ## ✨ Key Features
